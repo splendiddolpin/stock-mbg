@@ -68,6 +68,12 @@ Route::middleware('auth')->group(function () {
     // 8. REKAP PENGGUNAAN
     Route::get('/usage-recaps', [UsageRecapController::class, 'index'])->name('usage-recaps.index');
 
+    Route::get('/periods/create', [App\Http\Controllers\PeriodController::class, 'create'])->name('periods.create');
+    Route::post('/periods', [App\Http\Controllers\PeriodController::class, 'store'])->name('periods.store');
+
+    Route::get('/daily-targets', [App\Http\Controllers\DailyTargetController::class, 'index'])->name('daily-targets.index');
+    Route::post('/daily-targets/update', [App\Http\Controllers\DailyTargetController::class, 'update'])->name('daily-targets.update');
+
 });
 
 require __DIR__.'/auth.php';

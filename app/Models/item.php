@@ -18,7 +18,7 @@ class Item extends Model
         return 'Aman';
     }
 
-    // Logika Warna Tailwind (Badge)
+    // Logika Waritemna Tailwind (Badge)
     public function getStatusColorAttribute()
     {
         return match($this->status) {

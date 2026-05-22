@@ -22,4 +22,12 @@ class Beneficiary extends Model
     {
         return $this->porsi_besar + $this->porsi_kecil;
     }
+    
+    // Relasi untuk mendata bahan baku apa saja yang menjadi alergen
+    public function allergens()
+    {
+        return $this->belongsToMany(Item::class, 'allergen_item')
+                    ->withPivot('anak_count') // <-- Tambahkan baris ini
+                    ->withTimestamps();
+    }
 }

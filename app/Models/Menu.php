@@ -7,8 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class Menu extends Model
 {
     protected $fillable = [
-        'name',
-        'description'
+        'date',
+        'menu_id',
+        'target_type', // <-- Tambahkan ini
     ];
 
     public function items()
