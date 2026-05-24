@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'Laravel') }}</title>
+        <title>{{ config('app.name', 'Laravel MBG') }}</title>
 
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
@@ -28,64 +28,101 @@
             <div class="max-w-7xl mx-auto flex flex-col md:flex-row py-6 sm:px-6 lg:px-8 gap-6">
                 
                 <aside class="w-full md:w-1/4 flex-shrink-0">
-                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-4 sticky top-6">
-                        <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 px-3">
-                            Menu Navigasi
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl p-4 sticky top-6 border border-gray-100">
+                        <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 px-3 border-b border-gray-100 pb-2">
+                            Menu Navigasi Utama
                         </div>
-                        <nav class="space-y-1">
+                        
+                        <nav class="space-y-3">
                             <a href="{{ route('dashboard') }}" 
-                               class="flex items-center px-3 py-2 rounded-md transition-colors {{ request()->routeIs('dashboard') ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' }}">
-                                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-                                Dashboard
+                               class="flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 {{ request()->routeIs('dashboard') ? 'bg-indigo-50 text-indigo-700 font-bold border border-indigo-100' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium' }}">
+                                <svg class="w-5 h-5 mr-3 {{ request()->routeIs('dashboard') ? 'text-indigo-600' : 'text-gray-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                                Dashboard Pusat
                             </a>
 
-                            <a href="{{ route('beneficiaries.index') }}" 
-                               class="flex items-center px-3 py-2 rounded-md transition-colors {{ request()->routeIs('beneficiaries.*') ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' }}">
-                                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222"></path></svg>
-                                Penerima Manfaat
-                            </a>
-                            
-                            <a href="{{ route('transactions.in') }}" 
-                               class="flex items-center px-3 py-2 rounded-md transition-colors {{ request()->routeIs('transactions.*') ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' }}">
-                                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path></svg>
-                                Barang Masuk
-                            </a>
-                            
-                            <a href="{{ route('transactions.recap') }}" 
-                               class="flex items-center px-3 py-2 rounded-md transition-colors {{ request()->routeIs('transactions.recap') ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' }}">
-                                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
-                                Rekap Masuk
-                            </a>
+                            <div x-data="{ open: {{ request()->routeIs('beneficiaries.*', 'periods.*', 'daily-targets.*', 'transactions.out-create') ? 'true' : 'false' }} }" class="rounded-xl overflow-hidden bg-white border {{ request()->routeIs('beneficiaries.*', 'periods.*', 'daily-targets.*', 'transactions.out-create') ? 'border-purple-200 shadow-sm' : 'border-transparent hover:border-gray-100' }}">
+                                <button @click="open = !open" 
+                                        class="flex items-center justify-between w-full px-3 py-2.5 rounded-xl transition-all duration-200 focus:outline-none {{ request()->routeIs('beneficiaries.*', 'periods.*', 'daily-targets.*', 'transactions.out-create') ? 'bg-purple-50 text-purple-800 font-bold' : 'text-gray-600 hover:bg-gray-50 font-bold' }}">
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-lg">🏃‍♂️</span>
+                                        Divisi Aslap
+                                    </div>
+                                    <svg :class="{'rotate-180': open}" class="w-4 h-4 transition-transform duration-200 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                
+                                <div x-show="open" x-transition.opacity class="pl-10 pr-3 py-2 space-y-1 bg-gray-50/50 text-sm">
+                                    <a href="{{ route('periods.index') }}" class="block py-2 px-3 rounded-lg transition-colors {{ request()->routeIs('periods.*') ? 'text-purple-700 font-bold bg-purple-100/70' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
+                                        • Buku Periode (14 Hari)
+                                    </a>
+                                    <a href="{{ route('beneficiaries.index') }}" class="block py-2 px-3 rounded-lg transition-colors {{ request()->routeIs('beneficiaries.*') ? 'text-purple-700 font-bold bg-purple-100/70' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
+                                        • Data Penerima Manfaat
+                                    </a>
+                                    <a href="{{ route('daily-targets.index') }}" class="block py-2 px-3 rounded-lg transition-colors {{ request()->routeIs('daily-targets.*') ? 'text-purple-700 font-bold bg-purple-100/70' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
+                                        • Penyesuaian Porsi (Libur)
+                                    </a>
+                                    <a href="{{ route('transactions.out-create') }}" class="block py-2 px-3 rounded-lg transition-colors {{ request()->routeIs('transactions.out-create') ? 'text-red-700 font-bold bg-red-100/70' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
+                                        • Pemakaian Darurat
+                                    </a>
+                                </div>
+                            </div>
 
-                            <a href="{{ route('items.index') }}" 
-                                class="flex items-center px-3 py-2 rounded-md transition-colors {{ request()->routeIs('items.*') ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' }}">
-                                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
-                                    Master Bahan
-                            </a>
+                            <div x-data="{ open: {{ request()->routeIs('items.*', 'menus.*', 'daily-targets.*', 'daily-menus.*', 'purchase-plan.*', 'transactions.return-create') ? 'true' : 'false' }} }" class="rounded-xl overflow-hidden bg-white border {{ request()->routeIs('items.*', 'menus.*', 'daily-targets.*', 'daily-menus.*', 'purchase-plan.*', 'transactions.return-create') ? 'border-orange-200 shadow-sm' : 'border-transparent hover:border-gray-100' }}">
+                                <button @click="open = !open" 
+                                        class="flex items-center justify-between w-full px-3 py-2.5 rounded-xl transition-all duration-200 focus:outline-none {{ request()->routeIs('items.*', 'menus.*', 'daily-targets.*', 'daily-menus.*', 'purchase-plan.*', 'transactions.return-create') ? 'bg-orange-50 text-orange-800 font-bold' : 'text-gray-600 hover:bg-gray-50 font-bold' }}">
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-lg">🧑‍🍳</span>
+                                        Divisi Ahli Gizi
+                                    </div>
+                                    <svg :class="{'rotate-180': open}" class="w-4 h-4 transition-transform duration-200 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                
+                                <div x-show="open" x-transition.opacity class="pl-10 pr-3 py-2 space-y-1 bg-gray-50/50 text-sm">
+                                    <a href="{{ route('items.index') }}" class="block py-2 px-3 rounded-lg transition-colors {{ request()->routeIs('items.*') ? 'text-orange-700 font-bold bg-orange-100/70' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
+                                        • Master Bahan Baku
+                                    </a>
+                                    <a href="{{ route('menus.index') }}" class="block py-2 px-3 rounded-lg transition-colors {{ request()->routeIs('menus.*') ? 'text-orange-700 font-bold bg-orange-100/70' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
+                                        • Master Menu & Resep
+                                    </a>
+                                    <a href="{{ route('daily-targets.index') }}" class="block py-2 px-3 rounded-lg transition-colors {{ request()->routeIs('daily-targets.*') ? 'text-orange-700 font-bold bg-orange-100/70' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
+                                        • Penyesuaian Porsi (Libur)
+                                    </a>
+                                    <a href="{{ route('daily-menus.index') }}" class="block py-2 px-3 rounded-lg transition-colors {{ request()->routeIs('daily-menus.*') ? 'text-orange-700 font-bold bg-orange-100/70' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
+                                        • Jadwal Menu Masak
+                                    </a>
+                                    <a href="{{ route('purchase-plan.index') }}" class="block py-2 px-3 rounded-lg transition-colors {{ request()->routeIs('purchase-plan.*') ? 'text-orange-700 font-bold bg-orange-100/70' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
+                                        • Rencana Belanja (PO)
+                                    </a>
+                                    <a href="{{ route('transactions.return-create') }}" class="block py-2 px-3 rounded-lg transition-colors {{ request()->routeIs('transactions.return-create') ? 'text-emerald-700 font-bold bg-emerald-100/70' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
+                                        • Pengembalian Sisa (Retur)
+                                    </a>
+                                </div>
+                            </div>
 
-                            <a href="{{ route('menus.index') }}" 
-                                class="flex items-center px-3 py-2 rounded-md transition-colors {{ request()->routeIs('menus.*') ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' }}">
-                                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
-                                Master Menu
-                            </a>
-                            
-                            <a href="{{ route('periods.create') }}" 
-                               class="flex items-center px-3 py-2 rounded-md transition-colors {{ request()->routeIs('periods.create') ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' }}">
-                                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                Tambah Periode
-                            </a>
-
-                            <a href="{{ route('daily-menus.index') }}" 
-                                class="flex items-center px-3 py-2 rounded-md transition-colors {{ request()->routeIs('daily-menus.*') ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' }}">
-                                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                Jadwal Menu (Kalender)
-                            </a>
-
-                            <a href="{{ route('usage-recaps.index') }}" 
-                                class="flex items-center px-3 py-2 rounded-md transition-colors {{ request()->routeIs('usage-recaps.*') ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' }}">
-                                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
-                                Rekap Penggunaan
-                            </a>
+                            <div x-data="{ open: {{ request()->routeIs('transactions.check-order', 'transactions.in', 'transactions.in-create', 'transactions.recap', 'usage-recaps.*') ? 'true' : 'false' }} }" class="rounded-xl overflow-hidden bg-white border {{ request()->routeIs('transactions.check-order', 'transactions.in', 'transactions.in-create', 'transactions.recap', 'usage-recaps.*') ? 'border-emerald-200 shadow-sm' : 'border-transparent hover:border-gray-100' }}">
+                                <button @click="open = !open" 
+                                        class="flex items-center justify-between w-full px-3 py-2.5 rounded-xl transition-all duration-200 focus:outline-none {{ request()->routeIs('transactions.check-order', 'transactions.in', 'transactions.in-create', 'transactions.recap', 'usage-recaps.*') ? 'bg-emerald-50 text-emerald-800 font-bold' : 'text-gray-600 hover:bg-gray-50 font-bold' }}">
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-lg">📦</span>
+                                        Divisi Logistik Gudang
+                                    </div>
+                                    <svg :class="{'rotate-180': open}" class="w-4 h-4 transition-transform duration-200 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                
+                                <div x-show="open" x-transition.opacity class="pl-10 pr-3 py-2 space-y-1 bg-gray-50/50 text-sm">
+                                    <a href="{{ route('transactions.check-order') }}" class="block py-2 px-3 rounded-lg transition-colors {{ request()->routeIs('transactions.check-order') ? 'text-emerald-700 font-bold bg-emerald-100/70' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
+                                        • Verifikasi PO Datang
+                                    </a>
+                                    <a href="{{ route('transactions.in') }}" class="block py-2 px-3 rounded-lg transition-colors {{ request()->routeIs('transactions.in', 'transactions.in-create') ? 'text-emerald-700 font-bold bg-emerald-100/70' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
+                                        • Input Masuk (Manual)
+                                    </a>
+                                    <a href="{{ route('transactions.recap') }}" class="block py-2 px-3 rounded-lg transition-colors {{ request()->routeIs('transactions.recap') ? 'text-emerald-700 font-bold bg-emerald-100/70' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
+                                        • Rekap Barang Masuk
+                                    </a>
+                                    <a href="{{ route('usage-recaps.index') }}" class="block py-2 px-3 rounded-lg transition-colors {{ request()->routeIs('usage-recaps.*') ? 'text-emerald-700 font-bold bg-emerald-100/70' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
+                                        • Rekap Barang Keluar
+                                    </a>
+                                </div>
+                            </div>
                             
                         </nav>
                     </div>

@@ -42,9 +42,11 @@ Route::middleware('auth')->group(function () {
     });
 
     // 3. PERIODE
-    Route::post('/periods/reset', [PeriodController::class, 'resetPeriod'])->name('periods.reset');
+    Route::get('/periods', [PeriodController::class, 'index'])->name('periods.index');
     Route::get('/periods/create', [PeriodController::class, 'create'])->name('periods.create');
-    Route::post('/periods/store', [PeriodController::class, 'store'])->name('periods.store');
+    Route::post('/periods', [PeriodController::class, 'store'])->name('periods.store');
+    Route::post('/periods/close', [PeriodController::class, 'closePeriod'])->name('periods.close');
+    Route::delete('/periods/{period}', [PeriodController::class, 'destroy'])->name('periods.destroy');
 
     // 4. PENERIMA MANFAAT (BENEFICIARIES)
     Route::get('/beneficiaries/create-posyandu', [BeneficiaryController::class, 'createPosyandu'])->name('beneficiaries.create-posyandu');
@@ -71,8 +73,26 @@ Route::middleware('auth')->group(function () {
     Route::get('/periods/create', [App\Http\Controllers\PeriodController::class, 'create'])->name('periods.create');
     Route::post('/periods', [App\Http\Controllers\PeriodController::class, 'store'])->name('periods.store');
 
+    // Rute Kelola Target Porsi Harian (Kalender)
     Route::get('/daily-targets', [App\Http\Controllers\DailyTargetController::class, 'index'])->name('daily-targets.index');
-    Route::post('/daily-targets/update', [App\Http\Controllers\DailyTargetController::class, 'update'])->name('daily-targets.update');
+    Route::post('/daily-targets/update', [App\Http\Controllers\DailyTargetController::class, 'updateBulk'])->name('daily-targets.update');
+    Route::get('/purchase-plan', [App\Http\Controllers\PurchasePlanController::class, 'index'])->name('purchase-plan.index');
+
+    // Rute untuk Ahli Gizi
+    Route::get('/purchase-plan', [App\Http\Controllers\PurchasePlanController::class, 'index'])->name('purchase-plan.index');
+    Route::post('/purchase-plan/save', [App\Http\Controllers\PurchasePlanController::class, 'saveOrder'])->name('purchase-plan.save-order');
+
+    // Rute untuk Admin Gudang (VVIP)
+    Route::get('/transactions/incoming-check', [App\Http\Controllers\TransactionController::class, 'checkIncomingOrder'])->name('transactions.check-order');
+    Route::post('/transactions/incoming-check/store', [App\Http\Controllers\TransactionController::class, 'storeIncomingCheck'])->name('transactions.store-check');
+
+    // Rute Pemakaian Darurat (Barang Keluar)
+    Route::get('/transactions/out/create', [App\Http\Controllers\TransactionController::class, 'createOut'])->name('transactions.out-create');
+    Route::post('/transactions/out/store', [App\Http\Controllers\TransactionController::class, 'storeOut'])->name('transactions.store-out');
+
+    // Rute Pengembalian Sisa Bahan (Retur Dapur)
+    Route::get('/transactions/return/create', [App\Http\Controllers\TransactionController::class, 'createReturn'])->name('transactions.return-create');
+    Route::post('/transactions/return/store', [App\Http\Controllers\TransactionController::class, 'storeReturn'])->name('transactions.store-return');
 
 });
 

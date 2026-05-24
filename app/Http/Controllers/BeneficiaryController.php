@@ -133,25 +133,54 @@ class BeneficiaryController extends Controller
         return redirect()->route('beneficiaries.index')->with('success', 'Penerima baru berhasil ditambahkan dan otomatis disinkronisasikan ke kalender periode aktif!');
     }
 
-    // Menampilkan form edit
+    // Menampilkan form edit dengan data bahan (items)
     public function edit(Beneficiary $beneficiary)
     {
-        return view('beneficiaries.edit', compact('beneficiary'));
+        // Ambil data bahan baku untuk ditampilkan di daftar alergen
+        $items = \App\Models\Item::orderBy('name', 'asc')->get();
+        return view('beneficiaries.edit', compact('beneficiary', 'items'));
     }
 
-    // Menyimpan perubahan data
+    // Menyimpan perubahan data termasuk alergen
     public function update(Request $request, Beneficiary $beneficiary)
     {
         $request->validate([
             'school_name' => 'required|string',
             'porsi_besar' => 'required|integer|min:0',
             'porsi_kecil' => 'required|integer|min:0',
-            'allergen_count' => 'required|integer|min:0',
-            'allergen_details' => 'nullable|string',
         ]);
 
-        $beneficiary->update($request->all());
-        return redirect()->route('beneficiaries.index')->with('success', 'Data sekolah berhasil diperbarui!');
+        $totalAlergiKeseluruhan = 0;
+        $allergenDetails = null;
+        $syncData = [];
+
+        // Proses Sinkronisasi Alergen persis seperti di form Create
+        if ($request->has('allergen_items') && count($request->allergen_items) > 0) {
+            $detailsArray = [];
+            foreach ($request->allergen_items as $itemId) {
+                $jmlAnak = $request->allergen_counts[$itemId] ?? 1;
+                $syncData[$itemId] = ['anak_count' => $jmlAnak];
+                $totalAlergiKeseluruhan += $jmlAnak;
+
+                $itemName = \App\Models\Item::find($itemId)->name;
+                $detailsArray[] = "{$itemName} ({$jmlAnak} orang)";
+            }
+            $allergenDetails = "Alergen: " . implode(', ', $detailsArray);
+        }
+
+        // Update data master sekolah
+        $beneficiary->update([
+            'school_name'       => $request->school_name,
+            'porsi_besar'       => $request->porsi_besar ?? 0,
+            'porsi_kecil'       => $request->porsi_kecil ?? 0,
+            'allergen_count'    => $totalAlergiKeseluruhan,
+            'allergen_details'  => $allergenDetails,
+        ]);
+
+        // Sinkronisasi data ke tabel pivot alergen
+        $beneficiary->allergens()->sync($syncData);
+
+        return redirect()->route('beneficiaries.index')->with('success', 'Data sekolah dan alergen berhasil diperbarui!');
     }
 
     // Menghapus data

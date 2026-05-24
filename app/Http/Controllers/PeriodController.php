@@ -5,21 +5,31 @@ namespace App\Http\Controllers;
 use App\Models\Period;
 use App\Models\DailyTarget;
 use App\Models\Beneficiary;
+use App\Models\DailyMenu;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
-use App\Models\Transaction; 
-use App\Models\DailyMenu;
-use App\Models\UsageRecap;
 
 class PeriodController extends Controller
 {
+    // 1. Menampilkan Daftar Sejarah Periode (Index)
+    public function index()
+    {
+        $periods = Period::orderBy('start_date', 'desc')->get();
+        return view('periods.index', compact('periods'));
+    }
+
+    // 2. Menampilkan Form Tambah Periode (Create)
     public function create()
     {
+        $activePeriod = Period::where('is_active', true)->first();
+        if ($activePeriod) {
+            return redirect()->route('periods.index')->with('error', 'Tidak bisa membuat periode baru karena Periode "' . $activePeriod->name . '" masih aktif! Tutup periode tersebut terlebih dahulu.');
+        }
+
         return view('periods.create');
     }
 
+    // 3. Menyimpan Periode Baru & Generate Otomatis Kalender Target Harian (Store)
     public function store(Request $request)
     {
         $request->validate([
@@ -27,11 +37,14 @@ class PeriodController extends Controller
             'start_date' => 'required|date',
         ]);
 
-        // 1. Hitung otomatis 14 Hari (Start Date + 13 Hari)
-        $startDate = Carbon::parse($request->start_date);
-        $endDate = $startDate->copy()->addDays(13); 
+        $activePeriod = Period::where('is_active', true)->first();
+        if ($activePeriod) {
+            return redirect()->back()->with('error', 'Masih ada periode yang aktif. Tutup terlebih dahulu.');
+        }
 
-        // 2. Buat & Simpan Periode Utama
+        $startDate = Carbon::parse($request->start_date);
+        $endDate = $startDate->copy()->addDays(13); // Otomatis 14 hari penuh
+
         $period = Period::create([
             'name' => $request->name,
             'start_date' => $startDate->format('Y-m-d'),
@@ -39,55 +52,34 @@ class PeriodController extends Controller
             'is_active' => true,
         ]);
 
-        // 3. TARIK DATA MASTER PM
         $beneficiaries = Beneficiary::all();
 
-        // Looping selama 14 Hari penuh
         for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
-            
-            $isSunday = $date->isSunday(); // Cek apakah hari ini Minggu
+            $isSunday = $date->isSunday();
 
             foreach ($beneficiaries as $pm) {
                 $isHoliday = false;
-                
-                // Ambil data asli dari database PM
-                $pBesar  = $pm->porsi_besar;
-                $pKecil  = $pm->porsi_kecil;
-                $tBalita = $pm->total_balita;
-                $tBumil  = $pm->total_bumil_busui;
+                $pBesar  = $pm->porsi_besar ?? 0;
+                $pKecil  = $pm->porsi_kecil ?? 0;
+                $tBalita = $pm->total_balita ?? 0;
+                $tBumil  = $pm->total_bumil_busui ?? 0;
 
                 if ($isSunday) {
-                    // Jika MINGGU -> Semua libur total!
                     $pBesar = $pKecil = $tBalita = $tBumil = 0;
                     $isHoliday = true;
                 } else {
-                    // JIKA HARI KERJA (Senin - Sabtu)
-                    
-                    // =========================================================
-                    // INI PERUBAHAN BARU: JIKA SABTU & TIPENYA SEKOLAH -> LIBUR
-                    // =========================================================
                     if ($date->isSaturday() && $pm->type === 'sekolah') {
-                        $pBesar = 0;
-                        $pKecil = 0;
+                        $pBesar = $pKecil = 0;
                         $isHoliday = true;
                     }
-                    // =========================================================
-
-                    // LOGIKA RAPELAN POSYANDU (Tetap Aman)
                     if ($pm->type === 'posyandu') {
-                        if ($date->isMonday() || $date->isThursday()) {
-                            // Senin & Kamis: Posyandu dikali 3!
-                            $tBalita *= 3;
-                            $tBumil  *= 3;
-                        } else {
-                            // Selasa, Rabu, Jumat, Sabtu: Posyandu 0 (Karena dirapel)
+                        if (!($date->isMonday() || $date->isThursday())) {
                             $tBalita = 0;
                             $tBumil  = 0;
                         }
                     }
                 }
 
-                // Simpan porsi yang sudah dihitung ke tabel Target Harian
                 DailyTarget::create([
                     'period_id'         => $period->id,
                     'date'              => $date->toDateString(),
@@ -101,33 +93,36 @@ class PeriodController extends Controller
             }
         }
 
-        return redirect()->route('dashboard')->with('success', 'Periode baru (14 Hari) berhasil dibuat! Sekolah otomatis libur di hari Sabtu & Minggu.');
+        return redirect()->route('periods.index')->with('success', 'Periode baru (14 Hari) berhasil dibuka dan kalender target harian telah di-generate!');
     }
 
-    public function resetPeriod(\Illuminate\Http\Request $request)
+    // 4. Tutup Buku Periode Aktif (Close)
+    public function closePeriod()
     {
-        // 1. Matikan pengecekan gembok relasi sementara agar tidak error
-        Schema::disableForeignKeyConstraints();
+        $activePeriod = Period::where('is_active', true)->first();
         
-        // 2. Bersihkan Rekap Penggunaan (Bahan Keluar)
-        UsageRecap::truncate();
+        if ($activePeriod) {
+            $activePeriod->update(['is_active' => false]);
+            DailyMenu::truncate(); // Bersihkan sisa jadwal besok/hari ini yang menggantung
 
-        // 3. Bersihkan Rekap Barang Masuk
-        Transaction::truncate();
+            return redirect()->route('periods.index')->with('success', 'Periode berhasil ditutup! Data aman diarsipkan.');
+        }
 
-        // 4. Bersihkan sisa jadwal menu harian
-        DailyMenu::truncate();
+        return redirect()->route('periods.index')->with('error', 'Tidak ada periode aktif yang bisa ditutup.');
+    }
 
-        // 5. Bersihkan Target Harian yang baru kita buat
-        DailyTarget::truncate();
+    // 5. Menghapus Periode (Destroy)
+    public function destroy(Period $period)
+    {
+        // Jika periode yang mau dihapus statusnya masih aktif, dilarang hapus langsung
+        if ($period->is_active) {
+            return redirect()->back()->with('error', 'Periode yang sedang aktif tidak boleh dihapus langsung! Tutup periode terlebih dahulu.');
+        }
 
-        // 6. Bersihkan Kotak Periode
-        Period::truncate();
+        // Hapus beserta anak-anak target hariannya (Cascade Delete manual)
+        $period->dailyTargets()->delete();
+        $period->delete();
 
-        // 7. Nyalakan kembali pengecekan gembok relasi
-        Schema::enableForeignKeyConstraints();
-
-        // Langsung kembalikan ke halaman dashboard
-        return redirect()->route('dashboard')->with('success', 'Reset Total Berhasil! Semua rekap, transaksi, target harian, dan riwayat periode telah dibersihkan hingga ke akar-akarnya.');
+        return redirect()->route('periods.index')->with('success', 'Data sejarah periode berhasil dihapus dari arsip.');
     }
 }

@@ -39,7 +39,6 @@ class MenuController extends Controller
             
             foreach ($request->ingredients as $ing) {
                 if (!empty($ing['item_id'])) {
-                    // KITA HANYA BUTUH 2 PORSI SEKARANG (BESAR & KECIL)
                     $attachData[$ing['item_id']] = [
                         'gramasi_besar'  => $ing['gramasi_besar'] ?? 0,
                         'gramasi_kecil'  => $ing['gramasi_kecil'] ?? 0,

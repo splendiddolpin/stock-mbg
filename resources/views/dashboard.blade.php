@@ -1,10 +1,10 @@
 @php
     // --- KITA BERSIHKAN BLOK INI ---
     // Semua hitungan belanja besok sudah dikerjakan di DashboardController.
-    // Di sini kita cuma perlu panggil data Menu untuk tabel paling bawah,
+    // Di sini kita cuma perlu panggil data Menu TERBARU (Top 5) untuk kotak bawah,
     // dan menggabungkan target porsi untuk estimasi resep.
 
-    $menusWithItems  = \App\Models\Menu::with('items')->get();
+    $menusWithItems  = \App\Models\Menu::with('items')->latest()->take(5)->get();
 
     // Gabungkan Target Sesuai Kesepakatan Ahli Gizi:
     // Porsi Besar = Sekolah Besar + Bumil
@@ -15,7 +15,7 @@
 
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+        <h2 class="font-bold text-2xl text-gray-800 leading-tight">
             {{ __('Dashboard Utama MBG') }}
         </h2>
     </x-slot>
@@ -23,58 +23,67 @@
     <div class="space-y-6">
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border-l-4 border-blue-500 p-6 flex flex-col justify-between">
-                <div class="text-sm font-medium text-gray-500 uppercase">Penerima Manfaat</div>
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl border-l-4 border-blue-500 p-6 flex flex-col justify-between hover:shadow-md transition">
+                <div class="text-sm font-bold text-gray-400 uppercase tracking-wider">Penerima Manfaat</div>
                 <div class="mt-2">
-                    <div class="text-2xl font-bold text-gray-900">
-                        {{ number_format($totalStudents + $totalJiwaPosyandu) }} <span class="text-sm font-normal text-gray-500">Jiwa</span>
+                    <div class="text-3xl font-black text-gray-900">
+                        {{ number_format($totalStudents + $totalJiwaPosyandu) }} <span class="text-sm font-bold text-gray-400">Jiwa</span>
                     </div>
-                    <div class="text-xs text-gray-500 font-medium mt-1 flex flex-col gap-0.5">
-                        <span class="text-blue-600 font-bold">• {{ number_format($totalStudents) }} Siswa <span class="font-normal text-gray-400">({{ $totalSchools }} Sekolah)</span></span>
-                        <span class="text-pink-600 font-bold">• {{ number_format($totalJiwaPosyandu) }} Orang <span class="font-normal text-gray-400">({{ $totalPosyandu }} Posyandu)</span></span>
+                    <div class="text-xs text-gray-500 font-medium mt-2 flex flex-col gap-1">
+                        <span class="text-blue-600 font-bold bg-blue-50 w-fit px-2 py-0.5 rounded">• {{ number_format($totalStudents) }} Siswa <span class="font-normal text-blue-400">({{ $totalSchools }} Sekolah)</span></span>
+                        <span class="text-pink-600 font-bold bg-pink-50 w-fit px-2 py-0.5 rounded">• {{ number_format($totalJiwaPosyandu) }} Orang <span class="font-normal text-pink-400">({{ $totalPosyandu }} Posyandu)</span></span>
                     </div>
                 </div>
             </div>
             
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border-l-4 border-green-500 p-6">
-                <div class="text-sm font-medium text-gray-500 uppercase">Total Jenis Barang</div>
-                <div class="text-2xl font-bold text-gray-900 mt-2">{{ $items->count() }} <span class="text-sm font-normal text-gray-500">Item</span></div>
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl border-l-4 border-emerald-500 p-6 hover:shadow-md transition">
+                <div class="text-sm font-bold text-gray-400 uppercase tracking-wider">Total Jenis Bahan</div>
+                <div class="text-3xl font-black text-gray-900 mt-2">{{ $items->count() }} <span class="text-sm font-bold text-gray-400">Item Gudang</span></div>
             </div>
             
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border-l-4 border-red-500 p-6">
-                <div class="text-sm font-medium text-gray-500 uppercase">Peringatan Stok</div>
-                <div class="text-2xl font-bold text-red-600 mt-2">{{ $lowStockCount }} <span class="text-sm font-normal text-gray-500">Kritis</span></div>
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl border-l-4 border-red-500 p-6 hover:shadow-md transition">
+                <div class="text-sm font-bold text-gray-400 uppercase tracking-wider">Peringatan Stok</div>
+                <div class="text-3xl font-black text-red-600 mt-2">{{ $lowStockCount }} <span class="text-sm font-bold text-red-400">Kritis</span></div>
             </div>
         </div>
         
-        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border-t-4 border-indigo-500 mb-6">
+        <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl border-t-4 border-indigo-500 mb-6">
             <div class="p-6">
                 <div class="flex flex-col md:flex-row justify-between items-center gap-4">
                     <div>
-                        <h3 class="text-lg font-bold text-gray-800">🍳 Menu Utama Hari Ini</h3>
-                        <p class="text-sm text-gray-500">Tanggal: {{ now()->format('d M Y') }}</p>
+                        <h3 class="text-xl font-black text-gray-800">🍳 Menu Utama Hari Ini</h3>
+                        <p class="text-sm font-bold text-indigo-500 mt-1">Tanggal: {{ now()->translatedFormat('d F Y') }}</p>
                     </div>
 
                     @if($jadwalHariIni)
-                        <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-4 bg-indigo-50 p-3 rounded-xl border border-indigo-100">
                             <div class="text-right">
-                                <span class="block font-bold text-indigo-600 uppercase">{{ $jadwalHariIni->menu->name }}</span>
-                                <span class="text-xs text-gray-500">
-                                    Target: <strong class="text-blue-600">{{ number_format($totalStudents) }} Siswa</strong> & <strong class="text-pink-600">{{ number_format($totalJiwaPosyandu) }} Posyandu</strong>
+                                <span class="block font-black text-indigo-700 uppercase text-lg">{{ $jadwalHariIni->menu->name }}</span>
+                                <span class="text-xs text-gray-500 flex items-center justify-end gap-1 mt-1 font-medium">
+                                    Target: 
+                                    @if($jadwalHariIni->target_type === 'sekolah' || $jadwalHariIni->target_type === 'semua')
+                                        <strong class="text-blue-700 bg-blue-100 px-2 py-0.5 rounded shadow-sm">{{ number_format($totalStudents) }} Siswa</strong> 
+                                    @endif
+                                    
+                                    @if($jadwalHariIni->target_type === 'semua') <span class="text-gray-400 font-bold">&amp;</span> @endif
+
+                                    @if($jadwalHariIni->target_type === 'posyandu' || $jadwalHariIni->target_type === 'semua')
+                                        <strong class="text-pink-700 bg-pink-100 px-2 py-0.5 rounded shadow-sm">{{ number_format($totalJiwaPosyandu) }} Posyandu</strong>
+                                    @endif
                                 </span>
                             </div>
 
                             <form action="{{ route('daily-menus.execute', $jadwalHariIni->id) }}" method="POST" onsubmit="return confirm('Konfirmasi: Selesaikan menu hari ini? Stok akan dipotong dan jadwal akan dihapus dari kalender.')">
                                 @csrf
-                                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-md transition-all flex items-center gap-2">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                                    Selesaikan & Potong Stok
+                                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-5 rounded-xl shadow-md transition-all flex items-center gap-2 active:scale-95">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                    Eksekusi Resep
                                 </button>
                             </form>
                         </div>
                     @else
-                        <div class="text-gray-400 italic text-sm bg-gray-50 px-4 py-2 rounded-lg border border-gray-100">
-                            Tidak ada jadwal menu untuk hari ini.
+                        <div class="text-gray-400 font-bold text-sm bg-gray-50 px-5 py-3 rounded-xl border border-gray-200 border-dashed">
+                            💤 Tidak ada jadwal menu untuk hari ini.
                         </div>
                     @endif
                 </div>
@@ -82,35 +91,35 @@
         </div>
 
         @if(isset($activePeriod) && count($calendarData) > 0)
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6 border border-gray-200">
-                <div class="p-4 bg-indigo-50 border-b border-indigo-100 flex justify-between items-center">
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl mb-6 border border-gray-200">
+                <div class="p-5 bg-indigo-50/50 border-b border-indigo-100 flex justify-between items-center">
                     <div>
-                        <h3 class="font-bold text-indigo-800 flex items-center gap-2 text-lg">
+                        <h3 class="font-black text-indigo-900 flex items-center gap-2 text-lg">
                             <span class="text-xl">📅</span> Kalender Target Porsi
                         </h3>
-                        <p class="text-xs text-indigo-600 mt-0.5 font-medium">Periode: {{ $activePeriod->name }}</p>
+                        <p class="text-xs text-indigo-600 mt-1 font-bold tracking-wider uppercase">Periode Aktif: {{ $activePeriod->name }}</p>
                     </div>
-                    <a href="{{ route('daily-targets.index') }}" class="text-xs font-bold bg-indigo-600 text-white px-4 py-2 rounded-lg shadow-sm hover:bg-indigo-700 transition-colors flex items-center gap-1">
+                    <a href="{{ route('daily-targets.index') }}" class="text-xs font-bold bg-indigo-600 text-white px-5 py-2.5 rounded-xl shadow-sm hover:bg-indigo-700 transition-colors flex items-center gap-2 active:scale-95">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                        Edit Libur / Porsi
+                        Edit Kalender Libur
                     </a>
                 </div>
                 
-                <div class="p-4 bg-gray-50/50">
+                <div class="p-5 bg-white">
                     <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3">
                         @foreach($calendarData as $day)
                             <div class="border rounded-xl flex flex-col overflow-hidden bg-white shadow-sm transition-all hover:shadow-md {{ $day['is_today'] ? 'border-indigo-400 ring-2 ring-indigo-200 scale-[1.02]' : 'border-gray-200' }}">
                                 
-                                <div class="text-center py-2 {{ $day['is_sunday'] ? 'bg-red-500 text-white' : ($day['is_today'] ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 border-b border-gray-200') }}">
-                                    <div class="text-[10px] font-bold uppercase tracking-wider opacity-80">{{ $day['day_name'] }}</div>
+                                <div class="text-center py-2 {{ $day['is_sunday'] ? 'bg-red-500 text-white' : ($day['is_today'] ? 'bg-indigo-600 text-white' : 'bg-gray-50 text-gray-700 border-b border-gray-200') }}">
+                                    <div class="text-[10px] font-bold uppercase tracking-widest opacity-90">{{ $day['day_name'] }}</div>
                                     <div class="text-2xl font-black leading-none my-1">{{ $day['day_num'] }}</div>
-                                    <div class="text-[10px] font-semibold">{{ $day['month'] }}</div>
+                                    <div class="text-[10px] font-bold opacity-90">{{ $day['month'] }}</div>
                                 </div>
                                 
                                 <div class="p-2.5 flex-1 flex flex-col justify-center">
                                     @if($day['is_sunday'])
                                         <div class="text-center">
-                                            <span class="inline-block bg-red-100 text-red-600 text-xs font-black px-2 py-1 rounded-md">LIBUR TOTAL</span>
+                                            <span class="inline-block bg-red-100 text-red-600 text-[10px] font-black tracking-widest px-2 py-1 rounded-md border border-red-200">LIBUR</span>
                                         </div>
                                     @else
                                         <div class="flex justify-between items-center border-b border-gray-100 pb-1.5 mb-1.5">
@@ -119,7 +128,7 @@
                                         </div>
                                         <div class="flex justify-between items-center">
                                             <span class="text-[11px] text-gray-500 font-bold">Posyandu</span>
-                                            <span class="text-sm font-black text-pink-600 {{ $day['posyandu'] > 0 ? 'bg-pink-100 px-1.5 py-0.5 rounded' : '' }}">{{ number_format($day['posyandu']) }}</span>
+                                            <span class="text-sm font-black text-pink-600 {{ $day['posyandu'] > 0 ? 'bg-pink-100 px-1.5 py-0.5 rounded border border-pink-200' : '' }}">{{ number_format($day['posyandu']) }}</span>
                                         </div>
                                         
                                         @if($day['libur'] > 0)
@@ -137,63 +146,69 @@
             </div>
         @endif
 
-        <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded-lg shadow-sm mt-8">
+        <div class="bg-indigo-50 border-l-4 border-indigo-500 p-6 rounded-2xl shadow-sm mt-8 mb-6">
             <div class="flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
-                    <h3 class="text-lg font-bold text-red-800">Tutup Periode Saat Ini</h3>
-                    <p class="text-sm text-red-600 mt-1">
-                        Tindakan ini akan <strong>menghapus seluruh data Rekap Penggunaan dan Barang Masuk</strong> secara permanen. Lakukan ini hanya jika Anda sudah merekap/mencetak laporan dan bersiap memulai periode baru.
+                    <h3 class="text-lg font-black text-indigo-900 flex items-center gap-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
+                        Tutup Periode Saat Ini (Arsip)
+                    </h3>
+                    <p class="text-sm text-indigo-700 mt-1 font-medium">
+                        Tindakan ini akan <strong>mengakhiri periode aktif</strong>. Seluruh data rekap penggunaan bahan dan target harian akan <strong>disimpan secara aman sebagai arsip</strong> untuk laporan.
                     </p>
                 </div>
                 
-                <form action="{{ route('periods.reset') }}" method="POST" onsubmit="return confirm('PERINGATAN KERAS! Apakah Anda benar-benar yakin ingin MENGHAPUS SEMUA DATA REKAP secara permanen? Data yang dihapus tidak dapat dikembalikan!');">
+                <form action="{{ route('periods.close') }}" method="POST" onsubmit="return confirm('Tutup Buku: Apakah Anda yakin ingin menutup periode ini? Pastikan semua transaksi hari ini sudah diselesaikan.');">
                     @csrf
-                    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 px-6 rounded-xl shadow border border-red-800 transition-all flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                        Bersihkan Data Periode
+                    <button type="submit" class="bg-indigo-700 hover:bg-indigo-800 text-white font-bold py-3 px-6 rounded-xl shadow border border-indigo-900 transition-all flex items-center gap-2 active:scale-95 whitespace-nowrap">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Tutup Buku Periode
                     </button>
                 </form>
             </div>
         </div>
 
         @if(isset($peringatanAlergen) && count($peringatanAlergen) > 0)
-            <div class="bg-red-100 border-l-4 border-red-600 p-5 rounded-lg shadow-sm mb-6 animate-pulse">
-                <h3 class="font-black text-red-800 flex items-center gap-2 text-lg uppercase">
-                    <span class="text-2xl">🚨</span> BAHAYA ALERGEN PADA MENU BESOK!
-                </h3>
-                <p class="text-sm text-red-700 mt-1 mb-2 font-medium">Harap pisahkan atau ganti bahan untuk penerima berikut:</p>
-                <ul class="text-sm text-red-800 list-disc list-inside font-bold bg-white/50 p-3 rounded-md">
-                    @foreach($peringatanAlergen as $peringatan)
-                        <li>{{ $peringatan }}</li>
-                    @endforeach
-                </ul>
+            <div class="bg-red-50 border border-red-200 p-6 rounded-2xl shadow-sm mb-6 relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10">
+                    <span class="text-9xl">🚨</span>
+                </div>
+                <div class="relative z-10">
+                    <h3 class="font-black text-red-800 flex items-center gap-2 text-xl uppercase tracking-wider mb-2">
+                        <span class="text-2xl animate-pulse">🚨</span> Bahaya Alergen Menu Besok!
+                    </h3>
+                    <p class="text-sm text-red-700 font-bold mb-3">Sistem mendeteksi ada bahan berbahaya pada resep besok. Harap pisahkan porsi untuk penerima berikut:</p>
+                    <ul class="text-sm text-red-900 font-bold space-y-2">
+                        @foreach($peringatanAlergen as $peringatan)
+                            <li class="bg-white/60 px-4 py-2 rounded-lg border border-red-100 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-red-500"></span> {{ $peringatan }}
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
             </div>
         @endif
+        
 
-        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border-t-4 border-orange-500">
-            <div class="p-4 bg-orange-50/50 border-b border-orange-100 flex items-center gap-2">
-                <span class="text-xl">🛒</span>
-                <h3 class="font-bold text-orange-800">
-                    Kebutuhan Belanja Untuk Besok ({{ date('d M Y', strtotime($besok)) }})
+        <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl border border-orange-100">
+            <div class="p-5 bg-gradient-to-r from-orange-50 to-orange-100/50 border-b border-orange-100 flex items-center gap-3">
+                <span class="text-2xl bg-white p-2 rounded-xl shadow-sm">🛒</span>
+                <h3 class="font-black text-orange-900 text-lg uppercase tracking-wider">
+                    Daftar Kebutuhan Belanja Besok <span class="text-orange-600">({{ date('d M Y', strtotime($besok)) }})</span>
                 </h3>
             </div>
-            <div class="p-4">
+            <div class="p-6">
             @if(isset($jadwalBesokList) && $jadwalBesokList->count() > 0)
-                <div class="mb-4 bg-blue-50/50 p-3 rounded-lg border border-blue-100 flex flex-col gap-2">
-                    <div class="text-sm text-gray-700 font-bold mb-1">Persiapan Menu Besok:</div>
+                <div class="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     @foreach($jadwalBesokList as $jadwal)
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white p-2 rounded border border-blue-50">
-                            <div class="font-bold text-blue-600 uppercase text-sm flex items-center gap-2">
-                                <span>🍲 {{ $jadwal->menu->name }}</span>
-                            </div>
-                            <div class="text-[11px] text-gray-500 bg-gray-50 px-2 py-1 rounded-md border border-gray-200">
+                        <div class="flex flex-col bg-white p-3 rounded-xl border border-blue-100 shadow-sm">
+                            <div class="font-black text-blue-800 uppercase text-sm mb-2">🍲 {{ $jadwal->menu->name }}</div>
+                            <div class="text-[11px] text-gray-500 bg-gray-50 px-2 py-1.5 rounded-lg border border-gray-200 font-medium">
                                 Target: 
                                 @if($jadwal->target_type === 'sekolah' || $jadwal->target_type === 'semua')
                                     <strong class="text-blue-600">{{ number_format($totalStudents) }} Siswa</strong> 
                                 @endif
-                                
-                                @if($jadwal->target_type === 'semua') &amp; @endif
-
+                                @if($jadwal->target_type === 'semua') <span class="mx-1">&amp;</span> @endif
                                 @if($jadwal->target_type === 'posyandu' || $jadwal->target_type === 'semua')
                                     <strong class="text-pink-600">{{ number_format($totalJiwaPosyandu) }} Posyandu</strong>
                                 @endif
@@ -203,71 +218,77 @@
                 </div>
                 
                 @if(count($kebutuhanBesok) > 0)
-                    <div class="overflow-x-auto rounded border border-gray-200 shadow-sm">
+                    <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
                         <table class="w-full text-sm text-left">
-                            <thead class="bg-gray-50 text-gray-600">
+                            <thead class="bg-slate-800 text-white text-xs uppercase tracking-wider">
                                 <tr>
-                                    <th class="py-2 px-3">Bahan Harus Dibeli</th>
-                                    <th class="py-2 px-3 text-center">Jumlah Kekurangan</th>
-                                    <th class="py-2 px-3 text-right">Estimasi Biaya</th>
+                                    <th class="py-3 px-4 font-bold">Bahan Harus Dibeli</th>
+                                    <th class="py-3 px-4 font-bold text-center">Jumlah Kekurangan</th>
+                                    <th class="py-3 px-4 font-bold text-right">Estimasi Biaya</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody class="divide-y divide-gray-100">
                                 @foreach($kebutuhanBesok as $kebutuhan)
-                                <tr class="border-t hover:bg-gray-50 transition-colors">
-                                    <td class="py-2 px-3 font-bold text-gray-800">{{ $kebutuhan['name'] }}</td>
-                                    <td class="py-2 px-3 text-center text-red-600 font-bold bg-red-50/30">+ {{ floatval($kebutuhan['defisit']) }} {{ $kebutuhan['unit'] }}</td>
-                                    <td class="py-2 px-3 text-right text-gray-700 font-semibold">Rp {{ number_format($kebutuhan['biaya'], 0, ',', '.') }}</td>
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="py-3 px-4 font-bold text-gray-900">{{ $kebutuhan['name'] }}</td>
+                                    <td class="py-3 px-4 text-center text-red-600 font-black bg-red-50/50">+ {{ floatval($kebutuhan['defisit']) }} {{ $kebutuhan['unit'] }}</td>
+                                    <td class="py-3 px-4 text-right text-gray-700 font-bold">Rp {{ number_format($kebutuhan['biaya'], 0, ',', '.') }}</td>
                                 </tr>
                                 @endforeach
                             </tbody>
-                            <tfoot class="bg-orange-50 font-bold text-gray-800 border-t">
+                            <tfoot class="bg-orange-50 border-t border-orange-200">
                                 <tr>
-                                    <td colspan="2" class="py-3 px-3 text-right">Total Perkiraan Biaya:</td>
-                                    <td class="py-3 px-3 text-right text-orange-700 text-base">Rp {{ number_format($totalBiayaBesok, 0, ',', '.') }}</td>
+                                    <td colspan="2" class="py-4 px-4 text-right font-black text-orange-900 uppercase tracking-widest text-xs">Total Perkiraan Biaya Pasar:</td>
+                                    <td class="py-4 px-4 text-right font-black text-orange-700 text-lg">Rp {{ number_format($totalBiayaBesok, 0, ',', '.') }}</td>
                                 </tr>
                             </tfoot>
                         </table>
                     </div>
                 @else
-                    <div class="text-center p-4 bg-emerald-50 text-emerald-700 rounded-md border border-emerald-200 font-bold text-sm shadow-sm">
-                        🎉 Stok gudang AMAN! Tidak ada bahan yang perlu dibeli untuk persiapan menu besok.
+                    <div class="text-center p-6 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-200 font-bold shadow-sm">
+                        <span class="text-3xl block mb-2">🎉</span>
+                        Stok gudang AMAN! Tidak ada bahan yang perlu dibeli untuk persiapan menu besok.
                     </div>
                 @endif
             @else
-                <div class="text-center p-4 bg-gray-50 text-gray-500 italic rounded-md text-sm border border-gray-200 shadow-sm">
+                <div class="text-center p-8 bg-gray-50 text-gray-500 rounded-xl border border-dashed border-gray-300 font-bold">
+                    <span class="text-3xl block mb-2">💤</span>
                     Belum ada jadwal menu yang diatur untuk besok. Silakan atur di Kalender Jadwal Menu.
                 </div>
             @endif
+            </div>
         </div>
 
-        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-            <div class="p-4 bg-gray-50 border-b border-gray-200 font-bold text-gray-700">📦 Stok Barang Gudang Saat Ini</div>
-            <div class="overflow-x-auto p-4">
+        <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl border border-gray-100">
+            <div class="p-5 bg-slate-800 flex items-center gap-3">
+                <span class="text-xl bg-slate-700 p-1.5 rounded-lg">📦</span>
+                <h3 class="font-black text-white text-lg tracking-widest uppercase">Stok Logistik Gudang Saat Ini</h3>
+            </div>
+            <div class="overflow-x-auto">
                 <table class="min-w-full bg-white text-sm">
-                    <thead class="bg-slate-800 text-white">
+                    <thead class="bg-gray-50 text-gray-500 border-b border-gray-200 text-xs uppercase tracking-wider">
                         <tr>
-                            <th class="py-2 px-4 text-left">Nama Bahan</th>
-                            <th class="py-2 px-4 text-center">Stok Sistem</th>
-                            <th class="py-2 px-4 text-right">Total Nilai (HPP)</th>
-                            <th class="py-2 px-4 text-center">Status</th>
+                            <th class="py-3 px-5 text-left font-bold">Data Barang</th>
+                            <th class="py-3 px-5 text-center font-bold">Stok Sistem</th>
+                            <th class="py-3 px-5 text-right font-bold">Valuasi (HPP)</th>
+                            <th class="py-3 px-5 text-center font-bold">Status Indikator</th>
                         </tr>
                     </thead>
-                    <tbody class="text-gray-600">
+                    <tbody class="divide-y divide-gray-100 text-gray-600">
                         @foreach($items as $item)
-                        <tr class="border-b hover:bg-gray-50">
-                            <td class="py-2 px-4">
-                                <div class="font-medium text-gray-900">{{ $item->name }}</div>
-                                <div class="text-xs text-gray-400 mt-0.5">@ Rp {{ number_format($item->hpp, 0, ',', '.') }} / {{ $item->unit }}</div>
+                        <tr class="hover:bg-gray-50/50 transition-colors">
+                            <td class="py-3 px-5">
+                                <div class="font-bold text-gray-900 text-base">{{ $item->name }}</div>
+                                <div class="text-[11px] font-bold text-gray-400 mt-0.5 bg-gray-100 w-fit px-2 py-0.5 rounded">@ Rp {{ number_format($item->hpp, 0, ',', '.') }} / {{ $item->unit }}</div>
                             </td>
-                            <td class="py-2 px-4 text-center font-bold">{{ floatval($item->stock_system) }} {{ $item->unit }}</td>
+                            <td class="py-3 px-5 text-center font-black text-gray-800 text-lg">{{ floatval($item->stock_system) }} <span class="text-xs text-gray-500 font-bold">{{ $item->unit }}</span></td>
                             
-                            <td class="py-2 px-4 text-right font-bold text-emerald-600">
+                            <td class="py-3 px-5 text-right font-black text-emerald-600">
                                 Rp {{ number_format($item->stock_system * $item->hpp, 0, ',', '.') }}
                             </td>
 
-                            <td class="py-2 px-4 text-center">
-                                <span class="border py-1 px-3 rounded-full text-xs font-semibold {{ $item->status_color }}">{{ $item->status }}</span>
+                            <td class="py-3 px-5 text-center">
+                                <span class="py-1 px-3 rounded-md text-[10px] uppercase tracking-wider font-black shadow-sm {{ $item->status_color }}">{{ $item->status }}</span>
                             </td>
                         </tr>
                         @endforeach
@@ -278,168 +299,129 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100 flex flex-col h-full">
-                <div class="p-4 bg-white border-b border-gray-100 flex items-center justify-between">
-                    <h3 class="font-bold text-gray-800 flex items-center gap-2">
-                        <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg">🏫</span>
-                        Daftar Sekolah & Posyandu
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl border border-gray-100 flex flex-col h-full">
+                <div class="p-5 bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-between rounded-t-2xl">
+                    <h3 class="font-black text-white flex items-center gap-2 tracking-wider">
+                        <span class="bg-white/20 p-1.5 rounded-lg">🏫</span>
+                        Penerima Manfaat
                     </h3>
-                    <span class="bg-blue-50 text-blue-600 text-xs font-bold px-2.5 py-1 rounded-full border border-blue-100">
-                        {{ $beneficiaries->count() }} Penerima
+                    <span class="bg-white text-blue-700 text-[10px] font-black px-3 py-1 rounded-full shadow-sm uppercase tracking-widest">
+                        {{ $beneficiaries->count() }} Titik
                     </span>
                 </div>
                 
-                <div class="overflow-x-auto p-0 flex-1 max-h-[400px] overflow-y-auto">
-                    <table class="w-full text-sm text-left">
-                        <thead class="bg-gray-50/80 text-xs text-gray-500 uppercase tracking-wider sticky top-0 z-10">
-                            <tr>
-                                <th class="py-3 px-4 font-semibold">Nama Penerima</th>
-                                <th class="py-3 px-4 font-semibold text-center">Porsi</th>
-                                <th class="py-3 px-4 font-semibold text-center">Alergen</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100 text-gray-600">
-                            @forelse($beneficiaries as $school)
-                                <tbody x-data="{ open: false }" class="hover:bg-blue-50/40 transition-colors duration-200">
-                                    <tr @click="open = !open" class="cursor-pointer group">
-                                        <td class="py-3 px-4">
-                                            <div class="flex items-center justify-between">
-                                                <div>
-                                                    <div class="font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
-                                                        {{ $school->school_name }}
-                                                        @if($school->type === 'posyandu')
-                                                            <span class="ml-1 text-[10px] bg-pink-100 text-pink-600 px-1.5 py-0.5 rounded-full">Posyandu</span>
-                                                        @endif
-                                                    </div>
-                                                    <div class="text-[10px] text-gray-400 mt-0.5">Ketuk untuk detail alergen</div>
-                                                </div>
-                                                <svg :class="{'rotate-180 text-blue-500': open, 'text-gray-300': !open}" class="w-4 h-4 transform transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                                            </div>
-                                        </td>
-                                        
-                                        <td class="py-3 px-4 text-center">
-                                            <div class="flex flex-col items-center gap-1">
-                                                @if($school->type === 'posyandu')
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-orange-50 text-orange-700 border border-orange-100 w-20 justify-center">
-                                                        {{ $school->total_balita }} Balita
-                                                    </span>
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-pink-50 text-pink-700 border border-pink-100 w-20 justify-center">
-                                                        {{ $school->total_bumil_busui }} Bumil
-                                                    </span>
-                                                @else
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-100 w-16 justify-center">
-                                                        {{ $school->porsi_besar }} B
-                                                    </span>
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100 w-16 justify-center">
-                                                        {{ $school->porsi_kecil }} K
-                                                    </span>
-                                                @endif
-                                            </div>
-                                        </td>
-                                        
-                                        <td class="py-3 px-4 text-center">
-                                            @if($school->allergen_count > 0)
-                                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-red-100 text-red-600 text-xs font-bold border border-red-200">
-                                                    {{ $school->allergen_count }}
-                                                </span>
-                                            @else
-                                                <span class="text-gray-300 font-bold">-</span>
-                                            @endif
-                                        </td>
-                                    </tr>
-                                    
-                                    <tr x-show="open" x-collapse x-cloak>
-                                        <td colspan="3" class="p-0 border-t-0">
-                                            <div class="bg-red-50/50 px-4 py-3 text-xs text-red-800 border-l-2 border-red-400 m-2 rounded-r-md">
-                                                <div class="flex items-start gap-2">
-                                                    <svg class="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                                                    <div>
-                                                        <span class="font-bold block mb-0.5">Detail Alergen ({{ $school->allergen_count }} Orang):</span>
-                                                        <span class="text-red-600/90 leading-relaxed">{{ $school->allergen_details ?: 'Belum ada catatan alergen spesifik.' }}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            @empty
-                                <tr>
-                                    <td colspan="3" class="py-8 px-4 text-center text-gray-500">
-                                        Belum ada data sekolah atau posyandu penerima.
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+                <div class="flex-1 max-h-[400px] overflow-y-auto p-3 space-y-2 bg-gray-50/30 custom-scrollbar">
+                    @forelse($beneficiaries as $school)
+                        <div x-data="{ open: false }" class="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden hover:border-blue-200 transition-all">
+                            <button @click="open = !open" class="w-full p-3 flex items-center justify-between focus:outline-none">
+                                <div class="text-left flex-1">
+                                    <div class="font-bold text-gray-800 text-sm flex items-center gap-2">
+                                        {{ $school->school_name }}
+                                        @if($school->type === 'posyandu')
+                                            <span class="text-[9px] bg-pink-100 text-pink-600 px-1.5 py-0.5 rounded-md uppercase tracking-wider">Posyandu</span>
+                                        @endif
+                                    </div>
+                                    <div class="text-[11px] text-gray-500 mt-1 flex items-center gap-2">
+                                        @if($school->type === 'posyandu')
+                                            <span class="font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">{{ $school->total_balita }} Balita</span>
+                                            <span class="font-bold text-pink-600 bg-pink-50 px-1.5 py-0.5 rounded">{{ $school->total_bumil_busui }} Bumil</span>
+                                        @else
+                                            <span class="font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">{{ $school->porsi_besar }} Besar</span>
+                                            <span class="font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">{{ $school->porsi_kecil }} Kecil</span>
+                                        @endif
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    @if($school->allergen_count > 0)
+                                        <span class="flex items-center justify-center w-6 h-6 rounded-full bg-red-100 text-red-600 text-xs font-bold border border-red-200 shadow-sm" title="Alergen">
+                                            {{ $school->allergen_count }}
+                                        </span>
+                                    @endif
+                                    <svg :class="{'rotate-180 text-blue-500': open, 'text-gray-300': !open}" class="w-4 h-4 transform transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </div>
+                            </button>
+                            
+                            <div x-show="open" x-collapse x-cloak>
+                                <div class="px-3 pb-3 pt-1 border-t border-gray-50">
+                                    <div class="bg-red-50/80 p-3 rounded-lg border border-red-100">
+                                        <div class="text-xs font-bold text-red-800 mb-1 flex items-center gap-1">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                            Detail Alergen ({{ $school->allergen_count }} Orang)
+                                        </div>
+                                        <div class="text-xs text-red-700/80 font-medium">
+                                            {{ $school->allergen_details ?: 'Tidak ada catatan alergen khusus.' }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @empty
+                        <div class="p-6 text-center text-gray-400 font-bold text-sm">Belum ada data penerima manfaat.</div>
+                    @endforelse
                 </div>
             </div>
 
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-4 bg-gray-50 border-b border-gray-200 font-bold text-gray-700">🍲 Master Menu & Estimasi Kebutuhan Resep</div>
-                <div class="overflow-x-auto p-0 flex-1 max-h-[400px] overflow-y-auto">
-                    <table class="w-full text-sm text-left">
-                        <thead class="bg-green-600 text-white sticky top-0 z-10">
-                            <tr>
-                                <th class="py-3 px-4 font-semibold">Nama Menu</th>
-                                <th class="py-3 px-4 font-semibold text-center">Keterangan</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100 text-gray-600">
-                            @foreach($menusWithItems as $menu)
-                                <tbody x-data="{ open: false }" class="hover:bg-green-50/40 transition-colors duration-200">
-                                    <tr @click="open = !open" class="cursor-pointer group">
-                                        <td class="py-3 px-4">
-                                            <div class="flex items-center justify-between">
-                                                <div>
-                                                    <div class="font-bold text-gray-800 group-hover:text-green-600 transition-colors">{{ $menu->name }}</div>
-                                                    <div class="text-[10px] text-gray-400 mt-0.5">Ketuk untuk lihat total resep</div>
-                                                </div>
-                                                <svg :class="{'rotate-180 text-green-500': open, 'text-gray-300': !open}" class="w-4 h-4 transform transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                                            </div>
-                                        </td>
-                                        <td class="py-3 px-4 text-center text-xs">{{ $menu->description ?: '-' }}</td>
-                                    </tr>
-                                    
-                                    <tr x-show="open" x-collapse x-cloak>
-                                        <td colspan="2" class="p-0 border-t-0">
-                                            <div class="bg-green-50/50 px-4 py-3 text-sm text-green-900 border-l-2 border-green-400 m-2 rounded-r-md">
-                                                <div class="font-bold mb-2 text-xs uppercase tracking-wider text-green-700">Total Kebutuhan (Termasuk Posyandu):</div>
-                                                
-                                                @if($menu->items->count() > 0)
-                                                    <ul class="space-y-1">
-                                                        @foreach($menu->items as $item)
-                                                            @php
-                                                                $gBesar  = (float) ($item->pivot->gramasi_besar ?? 0);
-                                                                $gKecil  = (float) ($item->pivot->gramasi_kecil ?? 0);
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl border border-gray-100 flex flex-col h-full">
+                <div class="p-5 bg-gradient-to-r from-emerald-500 to-teal-600 flex items-center justify-between rounded-t-2xl">
+                    <h3 class="font-black text-white flex items-center gap-2 tracking-wider">
+                        <span class="bg-white/20 p-1.5 rounded-lg">🍲</span>
+                        Resep Menu Terbaru
+                    </h3>
+                    <a href="{{ route('menus.index') }}" class="bg-white/20 hover:bg-white/30 text-white text-[10px] font-black px-3 py-1.5 rounded-full transition-all border border-white/30 flex items-center gap-1 uppercase tracking-widest shadow-sm">
+                        Lihat Semua
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </a>
+                </div>
+                
+                <div class="flex-1 max-h-[400px] overflow-y-auto p-3 space-y-2 bg-gray-50/30 custom-scrollbar">
+                    @forelse($menusWithItems as $menu)
+                        <div x-data="{ open: false }" class="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden hover:border-emerald-200 transition-all">
+                            <button @click="open = !open" class="w-full p-3 flex items-center justify-between focus:outline-none">
+                                <div class="text-left flex-1">
+                                    <div class="font-bold text-gray-800 text-sm">{{ $menu->name }}</div>
+                                    <div class="text-[11px] text-gray-400 mt-1 font-medium italic line-clamp-1">{{ $menu->description ?: 'Tanpa keterangan' }}</div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2 py-1 rounded border border-emerald-100 shadow-sm">{{ $menu->items->count() }} Bahan</span>
+                                    <svg :class="{'rotate-180 text-emerald-500': open, 'text-gray-300': !open}" class="w-4 h-4 transform transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </div>
+                            </button>
+                            
+                            <div x-show="open" x-collapse x-cloak>
+                                <div class="px-3 pb-3 pt-1 border-t border-gray-50">
+                                    <div class="bg-slate-50 rounded-lg border border-gray-200 overflow-hidden">
+                                        <div class="bg-slate-100 px-3 py-1.5 border-b border-gray-200 text-[10px] font-black uppercase tracking-widest text-slate-600">Total Kebutuhan (Termasuk Posyandu)</div>
+                                        <div class="p-2 space-y-1.5 max-h-40 overflow-y-auto custom-scrollbar">
+                                            @forelse($menu->items as $item)
+                                                @php
+                                                    $gBesar  = (float) ($item->pivot->gramasi_besar ?? 0);
+                                                    $gKecil  = (float) ($item->pivot->gramasi_kecil ?? 0);
 
-                                                                // RUMUS BENAR SESUAI AHLI GIZI (Hanya 2 Gramasi)
-                                                                $totalKebutuhanGram = ($gBesar * $masterPorsiBesar) + ($gKecil * $masterPorsiKecil);
-                                                                
-                                                                $jmlKonversi = $totalKebutuhanGram;
-                                                                $satuan = strtolower($item->unit);
-                                                                if($satuan === 'kg' || $satuan === 'liter'){
-                                                                    $jmlKonversi = $totalKebutuhanGram / 1000;
-                                                                }
-                                                            @endphp
-                                                            <li class="flex justify-between items-center bg-white px-2 py-1.5 rounded shadow-sm">
-                                                                <span class="font-bold text-gray-700">{{ $item->name }}</span>
-                                                                <div class="text-right">
-                                                                    <span class="font-bold text-blue-600">{{ floatval($jmlKonversi) }} {{ $item->unit }}</span>
-                                                                    <span class="text-xs text-gray-400 block mt-0.5">(Total {{ floatval($totalKebutuhanGram) }} murni)</span>
-                                                                </div>
-                                                            </li>
-                                                        @endforeach
-                                                    </ul>
-                                                @else
-                                                    <div class="text-gray-500 italic text-xs">Belum ada bahan yang ditambahkan ke resep ini.</div>
-                                                @endif
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            @endforeach
-                        </tbody>
-                    </table>
+                                                    $totalKebutuhanGram = ($gBesar * $masterPorsiBesar) + ($gKecil * $masterPorsiKecil);
+                                                    
+                                                    $jmlKonversi = $totalKebutuhanGram;
+                                                    $satuan = strtolower($item->unit);
+                                                    if($satuan === 'kg' || $satuan === 'liter'){
+                                                        $jmlKonversi = $totalKebutuhanGram / 1000;
+                                                    }
+                                                @endphp
+                                                <div class="flex justify-between items-center bg-white border border-gray-100 px-2 py-1.5 rounded shadow-sm">
+                                                    <span class="font-bold text-xs text-gray-700">{{ $item->name }}</span>
+                                                    <div class="text-right">
+                                                        <span class="font-black text-emerald-600 text-xs">{{ floatval($jmlKonversi) }} {{ $item->unit }}</span>
+                                                    </div>
+                                                </div>
+                                            @empty
+                                                <div class="text-xs text-gray-400 italic text-center py-2">Belum ada racikan bahan resep.</div>
+                                            @endforelse
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @empty
+                        <div class="p-6 text-center text-gray-400 font-bold text-sm">Belum ada menu yang dibuat.</div>
+                    @endforelse
                 </div>
             </div>
 
