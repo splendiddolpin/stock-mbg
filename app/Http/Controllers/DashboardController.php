@@ -10,6 +10,7 @@ use App\Models\DailyMenu;
 use App\Models\Period;
 use App\Models\DailyTarget;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -28,7 +29,7 @@ class DashboardController extends Controller
         
         $lowStockCount = $items->whereIn('status', ['Habis', 'Hampir Habis'])->count();
 
-        // Cari Periode Aktif (Dipindah ke atas agar bisa dipakai oleh kalkulator & kalender)
+        // Cari Periode Aktif
         $activePeriod = Period::where('is_active', true)->latest()->first();
 
         // 3. Ambil jadwal menu untuk HARI INI
@@ -38,113 +39,52 @@ class DashboardController extends Controller
                         ->first();
 
         // =========================================================================
-        // 4. LOGIKA KEBUTUHAN BELANJA BESOK (SINKRON DENGAN KALENDER LIBUR/RAPELAN)
+        // 4. LOGIKA KEBUTUHAN BELANJA BESOK (DIAMBIL DARI PURCHASE ORDER)
+        // =========================================================================
+        // =========================================================================
+        // 4. LOGIKA KEBUTUHAN BELANJA BESOK (DIAMBIL DARI PURCHASE ORDER)
         // =========================================================================
         $besok = now()->addDay()->toDateString();
         $jadwalBesokList = DailyMenu::with('menu.items')->where('date', $besok)->get();
         
         $kebutuhanBesok = [];
         $totalBiayaBesok = 0;
-        $kebutuhanItems = [];
 
-        // WADAH TARGET MURNI HARI ESOK
-        $porsiSekolahBesar = 0;
-        $porsiSekolahKecil = 0;
-        $porsiPosyanduBesar = 0; // Untuk Bumil
-        $porsiPosyanduKecil = 0; // Untuk Balita
+        // Tarik data Surat Pesanan (Permintaan Dapur)
+        $poBesok = \Illuminate\Support\Facades\DB::table('purchase_orders')
+            ->join('items', 'purchase_orders.item_id', '=', 'items.id')
+            ->where('purchase_orders.date_of_cooking', $besok)
+            ->select('items.name', 'items.unit', 'items.hpp', 'items.stock_system', 'purchase_orders.qty_ordered', 'purchase_orders.status')
+            ->get();
 
-        if ($activePeriod) {
-            // JIKA ADA PERIODE AKTIF: Ambil data dari buku catatan harian besok
-            $targetsBesok = DailyTarget::with('beneficiary')
-                ->where('period_id', $activePeriod->id)
-                ->where('date', $besok)
-                ->where('is_holiday', false) // KUNCI: YANG LIBUR TIDAK DIHITUNG!
-                ->get();
+        foreach ($poBesok as $po) {
+            $permintaanDapur = $po->qty_ordered;
+            $stokGudang = $po->stock_system;
+            
+            // RUMUS BENAR: Kekurangan (Defisit) = Permintaan Dapur - Stok Gudang
+            $defisit = $permintaanDapur - $stokGudang;
 
-            foreach ($targetsBesok as $t) {
-                if ($t->beneficiary->type === 'sekolah') {
-                    $porsiSekolahBesar += $t->porsi_besar;
-                    $porsiSekolahKecil += $t->porsi_kecil;
-                } elseif ($t->beneficiary->type === 'posyandu') {
-                    // Sesuai rumus Ahli Gizi: Bumil masuk Porsi Besar, Balita masuk Porsi Kecil
-                    $porsiPosyanduBesar += $t->total_bumil_busui;
-                    $porsiPosyanduKecil += $t->total_balita;
-                }
-            }
-        } else {
-            // JIKA TIDAK ADA PERIODE AKTIF: Gunakan Master Data sebagai perkiraan (Fallback)
-            $porsiSekolahBesar = $beneficiaries->where('type', 'sekolah')->sum('porsi_besar');
-            $porsiSekolahKecil = $beneficiaries->where('type', 'sekolah')->sum('porsi_kecil');
-            $porsiPosyanduBesar = $beneficiaries->where('type', 'posyandu')->sum('total_bumil_busui');
-            $porsiPosyanduKecil = $beneficiaries->where('type', 'posyandu')->sum('total_balita');
-        }
-
-        // MULAILAH MENGHITUNG KEBUTUHAN BERDASARKAN MENU YANG ADA BESOK
-        // MULAILAH MENGHITUNG KEBUTUHAN BERDASARKAN MENU YANG ADA BESOK
-        if ($jadwalBesokList->count() > 0) {
-            foreach ($jadwalBesokList as $jadwal) {
-                foreach ($jadwal->menu->items as $item) {
-                    
-                    if (!isset($kebutuhanItems[$item->id])) {
-                        $kebutuhanItems[$item->id] = ['item' => $item, 'total_dibutuhkan' => 0];
-                    }
-
-                    $targetBesarUntukMenuIni = 0;
-                    $targetKecilUntukMenuIni = 0;
-
-                    // FILTER TARGET: Menu ini untuk siapa?
-                    if ($jadwal->target_type === 'sekolah' || $jadwal->target_type === 'semua') {
-                        $targetBesarUntukMenuIni += $porsiSekolahBesar;
-                        $targetKecilUntukMenuIni += $porsiSekolahKecil;
-                    }
-
-                    if ($jadwal->target_type === 'posyandu' || $jadwal->target_type === 'semua') {
-                        $targetBesarUntukMenuIni += $porsiPosyanduBesar;
-                        $targetKecilUntukMenuIni += $porsiPosyanduKecil;
-                    }
-
-                    // 1. Hitung Kebutuhan dalam bentuk Gram / Mililiter (Sesuai resep)
-                    $kebutuhanGram = ($item->pivot->gramasi_besar * $targetBesarUntukMenuIni) + 
-                                     ($item->pivot->gramasi_kecil * $targetKecilUntukMenuIni);
-
-                    // ================================================================
-                    // 2. KONVERSI SATUAN (Dari Gram ke Kg / Dari Mililiter ke Liter)
-                    // ================================================================
-                    $kebutuhanFinal = $kebutuhanGram;
-                    
-                    // Jika satuan di gudang adalah 'kg' atau 'liter', maka wajib dibagi 1000
-                    if (strtolower($item->unit) === 'kg' || strtolower($item->unit) === 'liter') {
-                        $kebutuhanFinal = $kebutuhanGram / 1000;
-                    }
-                    // ================================================================
-
-                    // 3. Tambahkan ke total akumulasi item tersebut dengan angka yang sudah benar (Kg/Liter)
-                    $kebutuhanItems[$item->id]['total_dibutuhkan'] += $kebutuhanFinal;
-                }
-            }
-
-            // HITUNG DEFISIT DAN BIAYA
-            foreach ($kebutuhanItems as $data) {
-                $item = $data['item'];
-                $totalDibutuhkan = $data['total_dibutuhkan'];
-
-                if ($item->stock_system < $totalDibutuhkan) {
-                    $defisit = $totalDibutuhkan - $item->stock_system;
-                    $biayaEstimasi = $defisit * $item->hpp;
-                    
-                    $totalBiayaBesok += $biayaEstimasi;
-
-                    $kebutuhanBesok[] = [
-                        'name' => $item->name,
-                        'defisit' => $defisit,
-                        'unit' => $item->unit,
-                        'biaya' => $biayaEstimasi
-                    ];
-                }
+            // HANYA MASUK DAFTAR BELANJA JIKA DEFISIT > 0 (Artinya stok kurang!)
+            if ($defisit > 0) {
+                $biaya = $defisit * $po->hpp;
+                
+                $kebutuhanBesok[] = [
+                    'name'       => $po->name,
+                    'unit'       => $po->unit,
+                    'permintaan' => $permintaanDapur,
+                    'stok'       => $stokGudang,
+                    'defisit'    => $defisit, // Ini yang harus dibeli ke pasar
+                    'biaya'      => $biaya,
+                    'status'     => $po->status
+                ];
+                
+                $totalBiayaBesok += $biaya;
             }
         }
 
+        // =========================================================================
         // --- SISTEM PERINGATAN ALERGI MULTI-MENU ---
+        // =========================================================================
         $peringatanAlergen = [];
         if ($jadwalBesokList->count() > 0) {
             $itemIdsBesok = collect();
@@ -164,8 +104,7 @@ class DashboardController extends Controller
                 $peringatanAlergen[] = "{$penerima->school_name} alergi: {$bahanTerlarang}";
             }
         }
-        // =========================================================================
-
+        
         // =====================================================================
         // 5. FITUR VISUAL: DATA KALENDER TARGET HARIAN 14 HARI
         // =====================================================================

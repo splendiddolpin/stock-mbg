@@ -223,22 +223,43 @@
                             <thead class="bg-slate-800 text-white text-xs uppercase tracking-wider">
                                 <tr>
                                     <th class="py-3 px-4 font-bold">Bahan Harus Dibeli</th>
-                                    <th class="py-3 px-4 font-bold text-center">Jumlah Kekurangan</th>
+                                    <th class="py-3 px-4 font-bold text-center">Permintaan Dapur</th>
+                                    <th class="py-3 px-4 font-bold text-center">Sisa Stok Gudang</th>
+                                    <th class="py-3 px-4 font-bold text-center">Kekurangan (Beli)</th>
                                     <th class="py-3 px-4 font-bold text-right">Estimasi Biaya</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100">
                                 @foreach($kebutuhanBesok as $kebutuhan)
                                 <tr class="hover:bg-gray-50 transition-colors">
-                                    <td class="py-3 px-4 font-bold text-gray-900">{{ $kebutuhan['name'] }}</td>
-                                    <td class="py-3 px-4 text-center text-red-600 font-black bg-red-50/50">+ {{ floatval($kebutuhan['defisit']) }} {{ $kebutuhan['unit'] }}</td>
-                                    <td class="py-3 px-4 text-right text-gray-700 font-bold">Rp {{ number_format($kebutuhan['biaya'], 0, ',', '.') }}</td>
+                                    <td class="py-3 px-4 font-bold text-gray-900">
+                                        {{ $kebutuhan['name'] }}
+                                        @if(isset($kebutuhan['status']) && $kebutuhan['status'] == 'completed')
+                                            <span class="ml-2 text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md uppercase font-black tracking-widest border border-emerald-200 shadow-sm">✔ Tiba di Gudang</span>
+                                        @endif
+                                    </td>
+                                    
+                                    <td class="py-3 px-4 text-center text-gray-600 font-bold bg-gray-50/50 border-x border-gray-100">
+                                        {{ floatval($kebutuhan['permintaan']) }} <span class="text-[10px] uppercase">{{ $kebutuhan['unit'] }}</span>
+                                    </td>
+                                    
+                                    <td class="py-3 px-4 text-center text-emerald-600 font-bold bg-emerald-50/30 border-r border-gray-100">
+                                        {{ floatval($kebutuhan['stok']) }} <span class="text-[10px] uppercase">{{ $kebutuhan['unit'] }}</span>
+                                    </td>
+                                    
+                                    <td class="py-3 px-4 text-center text-red-600 font-black bg-red-50/50 border-r border-red-100">
+                                        + {{ floatval($kebutuhan['defisit']) }} <span class="text-[10px] uppercase">{{ $kebutuhan['unit'] }}</span>
+                                    </td>
+                                    
+                                    <td class="py-3 px-4 text-right text-gray-700 font-bold">
+                                        Rp {{ number_format($kebutuhan['biaya'], 0, ',', '.') }}
+                                    </td>
                                 </tr>
                                 @endforeach
                             </tbody>
                             <tfoot class="bg-orange-50 border-t border-orange-200">
                                 <tr>
-                                    <td colspan="2" class="py-4 px-4 text-right font-black text-orange-900 uppercase tracking-widest text-xs">Total Perkiraan Biaya Pasar:</td>
+                                    <td colspan="4" class="py-4 px-4 text-right font-black text-orange-900 uppercase tracking-widest text-xs">Total Perkiraan Biaya Pasar:</td>
                                     <td class="py-4 px-4 text-right font-black text-orange-700 text-lg">Rp {{ number_format($totalBiayaBesok, 0, ',', '.') }}</td>
                                 </tr>
                             </tfoot>
@@ -247,7 +268,7 @@
                 @else
                     <div class="text-center p-6 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-200 font-bold shadow-sm">
                         <span class="text-3xl block mb-2">🎉</span>
-                        Stok gudang AMAN! Tidak ada bahan yang perlu dibeli untuk persiapan menu besok.
+                        Stok gudang AMAN! Kebutuhan resep dapur sudah tercukupi seluruhnya oleh stok gudang saat ini.
                     </div>
                 @endif
             @else

@@ -77,14 +77,9 @@
                                 </button>
                                 
                                 <div x-show="open" x-transition.opacity class="pl-10 pr-3 py-2 space-y-1 bg-gray-50/50 text-sm">
-                                    <a href="{{ route('items.index') }}" class="block py-2 px-3 rounded-lg transition-colors {{ request()->routeIs('items.*') ? 'text-orange-700 font-bold bg-orange-100/70' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
-                                        • Master Bahan Baku
-                                    </a>
+                                    
                                     <a href="{{ route('menus.index') }}" class="block py-2 px-3 rounded-lg transition-colors {{ request()->routeIs('menus.*') ? 'text-orange-700 font-bold bg-orange-100/70' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
                                         • Master Menu & Resep
-                                    </a>
-                                    <a href="{{ route('daily-targets.index') }}" class="block py-2 px-3 rounded-lg transition-colors {{ request()->routeIs('daily-targets.*') ? 'text-orange-700 font-bold bg-orange-100/70' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
-                                        • Penyesuaian Porsi (Libur)
                                     </a>
                                     <a href="{{ route('daily-menus.index') }}" class="block py-2 px-3 rounded-lg transition-colors {{ request()->routeIs('daily-menus.*') ? 'text-orange-700 font-bold bg-orange-100/70' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
                                         • Jadwal Menu Masak
@@ -109,6 +104,9 @@
                                 </button>
                                 
                                 <div x-show="open" x-transition.opacity class="pl-10 pr-3 py-2 space-y-1 bg-gray-50/50 text-sm">
+                                    <a href="{{ route('items.index') }}" class="block py-2 px-3 rounded-lg transition-colors {{ request()->routeIs('items.*') ? 'text-emerald-700 font-bold bg-emerald-100/70' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
+                                        • Master Bahan Baku
+                                    </a>
                                     <a href="{{ route('transactions.check-order') }}" class="block py-2 px-3 rounded-lg transition-colors {{ request()->routeIs('transactions.check-order') ? 'text-emerald-700 font-bold bg-emerald-100/70' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
                                         • Verifikasi PO Datang
                                     </a>

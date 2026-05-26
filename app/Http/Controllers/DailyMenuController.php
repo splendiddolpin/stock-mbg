@@ -14,14 +14,22 @@ class DailyMenuController extends Controller
     // Menampilkan halaman jadwal sekaligus form tambah
     public function index()
     {
-        $menus = Menu::orderBy('name', 'asc')->get();
+        // 1. Ambil periode yang sedang aktif
+        $activePeriod = \App\Models\Period::where('is_active', true)->first();
         
-        // Menampilkan jadwal dari hari ini ke depan
-        $schedules = DailyMenu::with('menu')
-                              ->orderBy('date', 'asc')
-                              ->get();
+        $menus = \App\Models\Menu::orderBy('name', 'asc')->get();
+        
+        // 2. Tampilkan jadwal HANYA yang ada di dalam periode aktif ini (agar rapi)
+        $schedules = collect();
+        if ($activePeriod) {
+            $schedules = \App\Models\DailyMenu::with('menu')
+                ->whereBetween('date', [$activePeriod->start_date, $activePeriod->end_date])
+                ->orderBy('date', 'asc')
+                ->get();
+        }
 
-        return view('daily_menus.index', compact('menus', 'schedules'));
+        // Kirim $activePeriod ke view
+        return view('daily-menus.index', compact('menus', 'schedules', 'activePeriod'));
     }
 
     // Menyimpan jadwal baru

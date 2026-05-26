@@ -94,6 +94,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/transactions/return/create', [App\Http\Controllers\TransactionController::class, 'createReturn'])->name('transactions.return-create');
     Route::post('/transactions/return/store', [App\Http\Controllers\TransactionController::class, 'storeReturn'])->name('transactions.store-return');
 
+    Route::put('/purchase-plan/update', [App\Http\Controllers\PurchasePlanController::class, 'updateOrder'])->name('purchase-plan.update-order');
+    Route::delete('/purchase-plan/delete', [App\Http\Controllers\PurchasePlanController::class, 'destroyOrder'])->name('purchase-plan.destroy-order');
+
 });
 
 require __DIR__.'/auth.php';
