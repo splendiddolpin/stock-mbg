@@ -39,10 +39,7 @@ class DashboardController extends Controller
                         ->first();
 
         // =========================================================================
-        // 4. LOGIKA KEBUTUHAN BELANJA BESOK (DIAMBIL DARI PURCHASE ORDER)
-        // =========================================================================
-        // =========================================================================
-        // 4. LOGIKA KEBUTUHAN BELANJA BESOK (DIAMBIL DARI PURCHASE ORDER)
+        // 4. LOGIKA KEBUTUHAN BELANJA BESOK (DINAMIS: GRAMASI x PORSI AKTIF)
         // =========================================================================
         $besok = now()->addDay()->toDateString();
         $jadwalBesokList = DailyMenu::with('menu.items')->where('date', $besok)->get();
@@ -50,32 +47,83 @@ class DashboardController extends Controller
         $kebutuhanBesok = [];
         $totalBiayaBesok = 0;
 
-        // Tarik data Surat Pesanan (Permintaan Dapur)
-        $poBesok = \Illuminate\Support\Facades\DB::table('purchase_orders')
-            ->join('items', 'purchase_orders.item_id', '=', 'items.id')
-            ->where('purchase_orders.date_of_cooking', $besok)
-            ->select('items.name', 'items.unit', 'items.hpp', 'items.stock_system', 'purchase_orders.qty_ordered', 'purchase_orders.status')
-            ->get();
+        // A. Cek daftar sekolah/posyandu yang LIBUR besok
+        $liburBesokIds = DailyTarget::where('date', $besok)
+                            ->where('is_holiday', true)
+                            ->pluck('beneficiary_id')
+                            ->toArray();
 
-        foreach ($poBesok as $po) {
-            $permintaanDapur = $po->qty_ordered;
-            $stokGudang = $po->stock_system;
-            
-            // RUMUS BENAR: Kekurangan (Defisit) = Permintaan Dapur - Stok Gudang
-            $defisit = $permintaanDapur - $stokGudang;
+        // B. Hitung PM Aktif Besok (Data yang Libur TIDAK DIHITUNG)
+        // Asumsi: Sekolah pakai porsi_besar & porsi_kecil
+        $porsiBesarSekolah = $beneficiaries->where('type', 'sekolah')->whereNotIn('id', $liburBesokIds)->sum('porsi_besar');
+        $porsiKecilSekolah = $beneficiaries->where('type', 'sekolah')->whereNotIn('id', $liburBesokIds)->sum('porsi_kecil');
+        
+        // Asumsi: Posyandu pakai bumil (besar) & balita (kecil)
+        $porsiBesarPosyandu = $beneficiaries->where('type', 'posyandu')->whereNotIn('id', $liburBesokIds)->sum('total_bumil_busui');
+        $porsiKecilPosyandu = $beneficiaries->where('type', 'posyandu')->whereNotIn('id', $liburBesokIds)->sum('total_balita');
 
-            // HANYA MASUK DAFTAR BELANJA JIKA DEFISIT > 0 (Artinya stok kurang!)
+        // Penampung sementara agar bahan yang sama di menu berbeda bisa dijumlahkan
+        $tempKebutuhan = [];
+
+        // C. Kalkulasi Gramasi per Bahan
+        foreach ($jadwalBesokList as $jadwal) {
+            $targetBesar = 0;
+            $targetKecil = 0;
+
+            // Masukkan jumlah porsi sesuai target menu
+            if ($jadwal->target_type == 'sekolah' || $jadwal->target_type == 'semua') {
+                $targetBesar += $porsiBesarSekolah;
+                $targetKecil += $porsiKecilSekolah;
+            }
+            if ($jadwal->target_type == 'posyandu' || $jadwal->target_type == 'semua') {
+                $targetBesar += $porsiBesarPosyandu;
+                $targetKecil += $porsiKecilPosyandu;
+            }
+
+            // Hitung bahan-bahan di dalam resepnya
+            foreach ($jadwal->menu->items as $item) {
+                $gBesar = (float) ($item->pivot->gramasi_besar ?? 0);
+                $gKecil = (float) ($item->pivot->gramasi_kecil ?? 0);
+                
+                // RUMUS AKURAT: (Gramasi Besar * Target Besar Aktif) + (Gramasi Kecil * Target Kecil Aktif)
+                $totalKebutuhanGram = ($gBesar * $targetBesar) + ($gKecil * $targetKecil);
+                
+                // Konversi Satuan ke sistem Gudang (KG / Liter)
+                $satuan = strtolower($item->unit);
+                $jmlKonversi = $totalKebutuhanGram;
+                if (in_array($satuan, ['kg', 'liter'])) {
+                    $jmlKonversi = $totalKebutuhanGram / 1000;
+                }
+
+                if (!isset($tempKebutuhan[$item->id])) {
+                    $tempKebutuhan[$item->id] = [
+                        'name'       => $item->name,
+                        'unit'       => $item->unit,
+                        'hpp'        => $item->hpp,
+                        'stok'       => floatval($item->stock_system),
+                        'permintaan' => 0,
+                    ];
+                }
+                $tempKebutuhan[$item->id]['permintaan'] += $jmlKonversi;
+            }
+        }
+
+        // D. Hitung Defisit (Kekurangan Stok) & Perkiraan Biaya Belanja
+        foreach ($tempKebutuhan as $id => $data) {
+            $defisit = $data['permintaan'] - $data['stok'];
+
+            // Hanya masuk keranjang belanja jika stok kurang (defisit > 0)
             if ($defisit > 0) {
-                $biaya = $defisit * $po->hpp;
+                $biaya = $defisit * $data['hpp'];
                 
                 $kebutuhanBesok[] = [
-                    'name'       => $po->name,
-                    'unit'       => $po->unit,
-                    'permintaan' => $permintaanDapur,
-                    'stok'       => $stokGudang,
-                    'defisit'    => $defisit, // Ini yang harus dibeli ke pasar
+                    'name'       => $data['name'],
+                    'unit'       => $data['unit'],
+                    'permintaan' => $data['permintaan'],
+                    'stok'       => $data['stok'],
+                    'defisit'    => $defisit,
                     'biaya'      => $biaya,
-                    'status'     => $po->status
+                    'status'     => 'pending' // Status standar
                 ];
                 
                 $totalBiayaBesok += $biaya;
@@ -142,6 +190,9 @@ class DashboardController extends Controller
             }
         }
 
+        // Ambil Data Resep Terbaru untuk UI Kotak Bawah
+        $menusWithItems = Menu::with('items')->latest()->take(5)->get();
+
         // 6. LEMPAR SEMUA DATA KE VIEW
         return view('dashboard', compact(
             'items', 
@@ -158,7 +209,8 @@ class DashboardController extends Controller
             'totalBiayaBesok',
             'peringatanAlergen',
             'activePeriod',
-            'calendarData'
+            'calendarData',
+            'menusWithItems' // Jangan lupa ini dikirim agar UI bawah tidak error
         ));
     }
 }

@@ -66,9 +66,9 @@
                                 </div>
                             </div>
 
-                            <div x-data="{ open: {{ request()->routeIs('items.*', 'menus.*', 'daily-targets.*', 'daily-menus.*', 'purchase-plan.*', 'transactions.return-create') ? 'true' : 'false' }} }" class="rounded-xl overflow-hidden bg-white border {{ request()->routeIs('items.*', 'menus.*', 'daily-targets.*', 'daily-menus.*', 'purchase-plan.*', 'transactions.return-create') ? 'border-orange-200 shadow-sm' : 'border-transparent hover:border-gray-100' }}">
+                            <div x-data="{ open: {{ request()->routeIs('menus.*', 'daily-menus.*', 'purchase-plan.*', 'transactions.return-create') ? 'true' : 'false' }} }" class="rounded-xl overflow-hidden bg-white border {{ request()->routeIs('menus.*', 'daily-menus.*', 'purchase-plan.*', 'transactions.return-create') ? 'border-orange-200 shadow-sm' : 'border-transparent hover:border-gray-100' }}">
                                 <button @click="open = !open" 
-                                        class="flex items-center justify-between w-full px-3 py-2.5 rounded-xl transition-all duration-200 focus:outline-none {{ request()->routeIs('items.*', 'menus.*', 'daily-targets.*', 'daily-menus.*', 'purchase-plan.*', 'transactions.return-create') ? 'bg-orange-50 text-orange-800 font-bold' : 'text-gray-600 hover:bg-gray-50 font-bold' }}">
+                                        class="flex items-center justify-between w-full px-3 py-2.5 rounded-xl transition-all duration-200 focus:outline-none {{ request()->routeIs('menus.*', 'daily-menus.*', 'purchase-plan.*', 'transactions.return-create') ? 'bg-orange-50 text-orange-800 font-bold' : 'text-gray-600 hover:bg-gray-50 font-bold' }}">
                                     <div class="flex items-center gap-3">
                                         <span class="text-lg">🧑‍🍳</span>
                                         Divisi Ahli Gizi
@@ -77,7 +77,6 @@
                                 </button>
                                 
                                 <div x-show="open" x-transition.opacity class="pl-10 pr-3 py-2 space-y-1 bg-gray-50/50 text-sm">
-                                    
                                     <a href="{{ route('menus.index') }}" class="block py-2 px-3 rounded-lg transition-colors {{ request()->routeIs('menus.*') ? 'text-orange-700 font-bold bg-orange-100/70' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
                                         • Master Menu & Resep
                                     </a>
@@ -93,9 +92,9 @@
                                 </div>
                             </div>
 
-                            <div x-data="{ open: {{ request()->routeIs('transactions.check-order', 'transactions.in', 'transactions.in-create', 'transactions.recap', 'usage-recaps.*') ? 'true' : 'false' }} }" class="rounded-xl overflow-hidden bg-white border {{ request()->routeIs('transactions.check-order', 'transactions.in', 'transactions.in-create', 'transactions.recap', 'usage-recaps.*') ? 'border-emerald-200 shadow-sm' : 'border-transparent hover:border-gray-100' }}">
+                            <div x-data="{ open: {{ request()->routeIs('items.*', 'transactions.check-order', 'transactions.in', 'transactions.in-create', 'transactions.recap', 'usage-recaps.*') ? 'true' : 'false' }} }" class="rounded-xl overflow-hidden bg-white border {{ request()->routeIs('items.*', 'transactions.check-order', 'transactions.in', 'transactions.in-create', 'transactions.recap', 'usage-recaps.*') ? 'border-emerald-200 shadow-sm' : 'border-transparent hover:border-gray-100' }}">
                                 <button @click="open = !open" 
-                                        class="flex items-center justify-between w-full px-3 py-2.5 rounded-xl transition-all duration-200 focus:outline-none {{ request()->routeIs('transactions.check-order', 'transactions.in', 'transactions.in-create', 'transactions.recap', 'usage-recaps.*') ? 'bg-emerald-50 text-emerald-800 font-bold' : 'text-gray-600 hover:bg-gray-50 font-bold' }}">
+                                        class="flex items-center justify-between w-full px-3 py-2.5 rounded-xl transition-all duration-200 focus:outline-none {{ request()->routeIs('items.*', 'transactions.check-order', 'transactions.in', 'transactions.in-create', 'transactions.recap', 'usage-recaps.*') ? 'bg-emerald-50 text-emerald-800 font-bold' : 'text-gray-600 hover:bg-gray-50 font-bold' }}">
                                     <div class="flex items-center gap-3">
                                         <span class="text-lg">📦</span>
                                         Divisi Logistik Gudang
@@ -121,6 +120,26 @@
                                     </a>
                                 </div>
                             </div>
+
+                            <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-6 mb-3 px-3 border-b border-gray-100 pb-2">
+                                Administrasi & Keuangan
+                            </div>
+                            
+                            <a href="{{ route('staff-cash.index') }}" 
+                               class="flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 {{ request()->routeIs('staff-cash.*') ? 'bg-amber-50 text-amber-700 font-bold border border-amber-200 shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium' }}">
+                                <span class="text-lg mr-3 {{ request()->routeIs('staff-cash.*') ? '' : 'grayscale opacity-70' }}">💰</span>
+                                Kas & Keuangan Staf
+                            </a>
+
+                            <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-6 mb-3 px-3 border-b border-gray-100 pb-2">
+                                Program Interaktif
+                            </div>
+                            
+                            <a href="{{ route('menu-catalogs.index') }}" 
+                               class="flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 {{ request()->routeIs('menu-catalogs.*') ? 'bg-pink-50 text-pink-700 font-bold border border-pink-100' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium' }}">
+                                <span class="text-lg mr-3 {{ request()->routeIs('menu-catalogs.*') ? '' : 'grayscale opacity-70' }}">📱</span>
+                                Request Menu Siswa
+                            </a>
                             
                         </nav>
                     </div>

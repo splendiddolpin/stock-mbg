@@ -13,7 +13,19 @@ use App\Http\Controllers\UsageRecapController;
 
 Route::get('/', function () {
     return view('welcome');
+
+   
+
 });
+
+ // Rute Publik (Siswa) - Tanpa Login
+// RUTE PUBLIK
+Route::get('/request-menu', [App\Http\Controllers\MenuRequestController::class, 'createPublic'])->name('request-menu.create');
+
+// KUNCI DI SINI: Maksimal 5 kali submit dalam 1 menit dari IP yang sama
+Route::post('/request-menu', [App\Http\Controllers\MenuRequestController::class, 'storePublic'])
+    ->middleware('throttle:5,1') 
+    ->name('request-menu.store');
 
 // --- DASHBOARD ---
 Route::get('/dashboard', [DashboardController::class, 'index'])
@@ -96,6 +108,11 @@ Route::middleware('auth')->group(function () {
 
     Route::put('/purchase-plan/update', [App\Http\Controllers\PurchasePlanController::class, 'updateOrder'])->name('purchase-plan.update-order');
     Route::delete('/purchase-plan/delete', [App\Http\Controllers\PurchasePlanController::class, 'destroyOrder'])->name('purchase-plan.destroy-order');
+
+    Route::resource('menu-catalogs', App\Http\Controllers\MenuCatalogController::class);
+
+    // Kelola Kas Staff
+    Route::resource('staff-cash', App\Http\Controllers\StaffCashController::class)->only(['index', 'store', 'destroy']);
 
 });
 

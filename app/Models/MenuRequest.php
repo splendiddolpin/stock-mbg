@@ -2,14 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class MenuRequest extends Model
 {
-    use HasFactory;
-
-    protected $fillable = ['beneficiary_id', 'menu_name', 'notes', 'status'];
+    protected $fillable = ['beneficiary_id', 'student_name', 'menu_name', 'reason', 'status'];
 
     public function beneficiary()
     {
