@@ -43,8 +43,8 @@
                 </a>
             </div>
 
-            <div class="bg-white overflow-hidden shadow-sm border border-gray-100 sm:rounded-2xl">
-                <div class="overflow-x-auto p-0">
+            <div class="bg-white shadow-sm border border-gray-100 sm:rounded-2xl">
+                <div class="overflow-x-auto p-0 rounded-2xl">
                     <table class="w-full text-sm text-left">
                         <thead class="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider font-bold border-b border-gray-200">
                             <tr>
@@ -53,39 +53,86 @@
                                 <th class="py-4 px-6 w-1/4 text-center">Aksi (Kelola)</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-100 text-gray-600">
-                            @forelse($menus as $menu)
-                                <tr class="hover:bg-green-50/30 transition-colors duration-200 group"
-                                    x-show="search === '' || '{{ strtolower(addslashes($menu->name)) }}'.includes(search.toLowerCase()) || '{{ strtolower(addslashes($menu->description)) }}'.includes(search.toLowerCase())">
-                                    
+                        
+                        @forelse($menus as $menu)
+                            <tbody x-data="{ expanded: false }" 
+                                   x-show="search === '' || '{{ strtolower(addslashes($menu->name)) }}'.includes(search.toLowerCase()) || '{{ strtolower(addslashes($menu->description)) }}'.includes(search.toLowerCase())"
+                                   class="border-b border-gray-100 last:border-b-0">
+                                
+                                <tr @click="expanded = !expanded" class="hover:bg-green-50/40 transition-colors duration-200 group cursor-pointer" :class="{'bg-green-50/20': expanded}">
                                     <td class="py-4 px-6">
-                                        <div class="font-bold text-gray-800 text-base group-hover:text-green-700 transition-colors">{{ $menu->name }}</div>
+                                        <div class="flex items-center gap-3">
+                                            <svg :class="{'rotate-90 text-green-600': expanded, 'text-gray-400 group-hover:text-green-500': !expanded}" class="w-5 h-5 transform transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path></svg>
+                                            
+                                            <div class="font-black text-gray-800 text-base group-hover:text-green-700 transition-colors">{{ $menu->name }}</div>
+                                        </div>
                                     </td>
-                                    <td class="py-4 px-6 leading-relaxed">
+                                    <td class="py-4 px-6 leading-relaxed text-gray-600">
                                         {{ $menu->description ?: 'Tidak ada keterangan spesifik.' }}
                                     </td>
-                                    <td class="py-4 px-6">
+                                    
+                                    <td class="py-4 px-6" @click.stop>
                                         <div class="flex justify-center items-center gap-2">
-                                            <a href="{{ route('menus.show', $menu->id) }}" class="flex items-center gap-1.5 text-blue-600 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-600 hover:text-white transition-all duration-200 font-semibold shadow-sm">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
-                                                Resep
+                                            <a href="{{ route('menus.show', $menu->id) }}" class="flex items-center gap-1 text-blue-600 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-600 hover:text-white transition-all duration-200 font-bold shadow-sm text-xs">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                                Kelola Resep
                                             </a>
                                             
-                                            <a href="{{ route('menus.edit', $menu->id) }}" class="text-indigo-600 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-lg hover:bg-indigo-600 hover:text-white transition-all duration-200 font-semibold shadow-sm">
+                                            <a href="{{ route('menus.edit', $menu->id) }}" class="text-indigo-600 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-lg hover:bg-indigo-600 hover:text-white transition-all duration-200 font-bold shadow-sm text-xs">
                                                 Edit
                                             </a>
                                             
                                             <form action="{{ route('menus.destroy', $menu->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus menu ini beserta semua resep di dalamnya?');">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="text-red-600 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-600 hover:text-white transition-all duration-200 font-semibold shadow-sm">
+                                                @csrf @method('DELETE')
+                                                <button type="submit" class="text-red-600 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-600 hover:text-white transition-all duration-200 font-bold shadow-sm text-xs">
                                                     Hapus
                                                 </button>
                                             </form>
                                         </div>
                                     </td>
                                 </tr>
-                            @empty
+
+                                <tr x-show="expanded" x-cloak class="bg-slate-50/50">
+                                    <td colspan="3" class="p-0">
+                                        <div x-show="expanded" x-collapse>
+                                            <div class="p-6 border-t border-gray-100">
+                                                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                                                    <div class="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
+                                                        <h4 class="font-black text-green-800 flex items-center gap-2">
+                                                            <span class="text-lg">📋</span> Komposisi Bahan Baku (Resep)
+                                                        </h4>
+                                                        <span class="text-xs font-bold bg-green-100 text-green-700 px-2.5 py-1 rounded-md">
+                                                            {{ $menu->items ? $menu->items->count() : 0 }} Macam Bahan
+                                                        </span>
+                                                    </div>
+                                                    
+                                                    @if($menu->items && $menu->items->count() > 0)
+                                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                            @foreach($menu->items as $item)
+                                                                <div class="flex justify-between items-center p-3 bg-gray-50 border border-gray-100 rounded-lg hover:border-green-200 transition-colors">
+                                                                    <div class="font-bold text-gray-700">{{ $item->name }}</div>
+                                                                    <div class="text-[11px] font-black flex gap-2">
+                                                                        <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded shadow-sm">Besar: {{ floatval($item->pivot->gramasi_besar ?? 0) }} {{ $item->unit }}</span>
+                                                                        <span class="bg-pink-100 text-pink-700 px-2 py-1 rounded shadow-sm">Kecil: {{ floatval($item->pivot->gramasi_kecil ?? 0) }} {{ $item->unit }}</span>
+                                                                    </div>
+                                                                </div>
+                                                            @endforeach
+                                                        </div>
+                                                    @else
+                                                        <div class="flex flex-col items-center justify-center py-6 text-gray-400 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
+                                                            <span class="text-3xl mb-2">🍽️</span>
+                                                            <p class="font-medium text-sm">Resep kosong.</p>
+                                                            <p class="text-xs mt-1">Silakan klik tombol "Kelola Resep" untuk mulai menakar bahan.</p>
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        @empty
+                            <tbody>
                                 <tr>
                                     <td colspan="3" class="py-16 text-center">
                                         <div class="flex flex-col items-center justify-center text-gray-400">
@@ -95,8 +142,8 @@
                                         </div>
                                     </td>
                                 </tr>
-                            @endforelse
-                        </tbody>
+                            </tbody>
+                        @endforelse
                     </table>
                 </div>
             </div>

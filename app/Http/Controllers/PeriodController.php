@@ -54,8 +54,15 @@ class PeriodController extends Controller
 
         $beneficiaries = Beneficiary::all();
 
+        // Siapkan Sistem Hutang Jadwal Posyandu
+        $hutangPosyandu = [];
+        foreach ($beneficiaries->where('type', 'posyandu') as $pm) {
+            $hutangPosyandu[$pm->id] = false;
+        }
+
         for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
             $isSunday = $date->isSunday();
+            $dateString = $date->toDateString();
 
             foreach ($beneficiaries as $pm) {
                 $isHoliday = false;
@@ -68,21 +75,38 @@ class PeriodController extends Controller
                     $pBesar = $pKecil = $tBalita = $tBumil = 0;
                     $isHoliday = true;
                 } else {
-                    if ($date->isSaturday() && $pm->type === 'sekolah') {
-                        $pBesar = $pKecil = 0;
-                        $isHoliday = true;
-                    }
-                    if ($pm->type === 'posyandu') {
-                        if (!($date->isMonday() || $date->isThursday())) {
-                            $tBalita = 0;
-                            $tBumil  = 0;
+                    if ($pm->type === 'sekolah') {
+                        // Sekolah libur di hari Sabtu
+                        if ($date->isSaturday()) {
+                            $pBesar = $pKecil = 0;
+                            $isHoliday = true;
                         }
+                    } 
+                    else if ($pm->type === 'posyandu') {
+                        $jadwalNormal = $date->isMonday() || $date->isThursday();
+                        $harusKirimHariIni = $jadwalNormal || $hutangPosyandu[$pm->id];
+
+                        if ($harusKirimHariIni) {
+                            // Eksekusi pengiriman
+                            $hutangPosyandu[$pm->id] = false; // Lunasi hutang
+                        } else {
+                            // Bukan jadwalnya
+                            $tBalita = $tBumil = 0;
+                        }
+                    }
+                }
+
+                // Cek: Jika ini hari Minggu dan Posyandu harusnya jadwal kirim, jadikan hutang!
+                if ($isSunday && $pm->type === 'posyandu') {
+                    $jadwalNormal = $date->isMonday() || $date->isThursday(); // Logikanya gak mungkin Senin karena ini cek hari Minggu, tapi aman untuk custom holiday nanti
+                    if ($jadwalNormal || $hutangPosyandu[$pm->id]) {
+                        $hutangPosyandu[$pm->id] = true;
                     }
                 }
 
                 DailyTarget::create([
                     'period_id'         => $period->id,
-                    'date'              => $date->toDateString(),
+                    'date'              => $dateString,
                     'beneficiary_id'    => $pm->id,
                     'porsi_besar'       => $pBesar,
                     'porsi_kecil'       => $pKecil,
@@ -111,18 +135,42 @@ class PeriodController extends Controller
         return redirect()->route('periods.index')->with('error', 'Tidak ada periode aktif yang bisa ditutup.');
     }
 
-    // 5. Menghapus Periode (Destroy)
+    // 5. Menghapus Periode sekaligus Export Excel (Destroy & Export)
     public function destroy(Period $period)
     {
-        // Jika periode yang mau dihapus statusnya masih aktif, dilarang hapus langsung
         if ($period->is_active) {
             return redirect()->back()->with('error', 'Periode yang sedang aktif tidak boleh dihapus langsung! Tutup periode terlebih dahulu.');
         }
 
-        // Hapus beserta anak-anak target hariannya (Cascade Delete manual)
+        // 1. SIAPKAN DATA (Ambil berdasarkan rentang tanggal periode)
+        $periodName = str_replace(' ', '_', $period->name);
+        $fileName = "Arsip_Lengkap_MBG_{$periodName}.xls";
+        $startDate = $period->start_date;
+        $endDate = $period->end_date;
+
+        $dataTargetHarian = $period->dailyTargets()->with('beneficiary')->orderBy('date', 'asc')->get();
+        
+        // Ambil data Barang Keluar (UsageRecap)
+        $dataBarangKeluar = \App\Models\UsageRecap::with(['item', 'menu'])
+            ->whereBetween('date', [$startDate, $endDate])->orderBy('date', 'asc')->get();
+            
+        // Ambil data Barang Masuk (Transaction tipe 'in')
+        $dataBarangMasuk = \App\Models\Transaction::with('item')
+            ->where('type', 'in')
+            ->whereBetween('date', [$startDate, $endDate])->orderBy('date', 'asc')->get();
+
+        // 2. PEMUSNAHAN MASSAL DARI DATABASE
         $period->dailyTargets()->delete();
+        \App\Models\UsageRecap::whereBetween('date', [$startDate, $endDate])->delete();
+        \App\Models\Transaction::whereBetween('date', [$startDate, $endDate])->delete();
         $period->delete();
 
-        return redirect()->route('periods.index')->with('success', 'Data sejarah periode berhasil dihapus dari arsip.');
+        // 3. GENERATE BLADE VIEW MENJADI FILE EXCEL
+        return response()->streamDownload(function() use($period, $dataTargetHarian, $dataBarangKeluar, $dataBarangMasuk) {
+            echo view('periods.export', compact('period', 'dataTargetHarian', 'dataBarangKeluar', 'dataBarangMasuk'))->render();
+        }, $fileName, [
+            "Content-type"        => "application/vnd.ms-excel",
+            "Content-Disposition" => "attachment; filename={$fileName}",
+        ]);
     }
 }

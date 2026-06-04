@@ -151,5 +151,56 @@
                 
             </div>
         </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // 1. Cari semua form di halaman yang punya atribut onsubmit berisi 'confirm'
+                const confirmForms = document.querySelectorAll('form[onsubmit*="confirm"]');
+
+                confirmForms.forEach(form => {
+                    // 2. Ambil teks asli dari atribut onsubmit
+                    const onsubmitValue = form.getAttribute('onsubmit');
+                    let alertMessage = 'Apakah Anda yakin ingin melanjutkan tindakan ini?';
+
+                    // 3. Ekstrak pesan dari dalam tanda kutip menggunakan Regex sederhana
+                    const match = onsubmitValue.match(/confirm\(['"](.*?)['"]\)/);
+                    if (match && match[1]) {
+                        alertMessage = match[1];
+                    }
+
+                    // 4. Hapus atribut onsubmit bawaan agar pop-up browser tidak muncul
+                    form.removeAttribute('onsubmit');
+
+                    // 5. Ganti dengan Event Listener baru menggunakan SweetAlert2
+                    form.addEventListener('submit', function(e) {
+                        e.preventDefault(); // Tahan form agar tidak langsung terkirim
+
+                        Swal.fire({
+                            title: 'Konfirmasi Tindakan',
+                            text: alertMessage, // Gunakan teks asli yang dicuri dari atribut tadi
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonColor: '#e11d48', // Tailwind rose-600
+                            cancelButtonColor: '#94a3b8',  // Tailwind slate-400
+                            confirmButtonText: 'Ya, Lanjutkan!',
+                            cancelButtonText: 'Batal',
+                            customClass: {
+                                popup: 'rounded-3xl border border-gray-100 shadow-xl',
+                                confirmButton: 'rounded-xl font-bold px-6 py-2.5',
+                                cancelButton: 'rounded-xl font-bold px-6 py-2.5 text-gray-700',
+                                title: 'text-2xl font-black text-gray-800'
+                            }
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                // Jika user klik 'Ya', kirim form secara paksa
+                                form.submit();
+                            }
+                        });
+                    });
+                });
+            });
+        </script>
     </body>
 </html>

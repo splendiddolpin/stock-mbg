@@ -1,119 +1,88 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\TransactionController;
-use App\Http\Controllers\ItemController;
-use App\Http\Controllers\PeriodController;
-use App\Http\Controllers\BeneficiaryController;
-use App\Http\Controllers\MenuController;
-use App\Http\Controllers\DailyMenuController; // <-- Tambahan agar rapi
-use App\Http\Controllers\UsageRecapController;
+use App\Http\Controllers\{
+    ProfileController, DashboardController, TransactionController, ItemController,
+    PeriodController, BeneficiaryController, MenuController, DailyMenuController,
+    UsageRecapController, DailyTargetController, PurchasePlanController, 
+    MenuCatalogController, StaffCashController, MenuRequestController
+};
 
-Route::get('/', function () {
-    return view('welcome');
-
-   
-
-});
-
- // Rute Publik (Siswa) - Tanpa Login
-// RUTE PUBLIK
-Route::get('/request-menu', [App\Http\Controllers\MenuRequestController::class, 'createPublic'])->name('request-menu.create');
-
-// KUNCI DI SINI: Maksimal 5 kali submit dalam 1 menit dari IP yang sama
-Route::post('/request-menu', [App\Http\Controllers\MenuRequestController::class, 'storePublic'])
-    ->middleware('throttle:5,1') 
+// 1. RUTE PUBLIK (Tanpa Login)
+Route::get('/request-menu', [MenuRequestController::class, 'createPublic'])->name('request-menu.create');
+Route::post('/request-menu', [MenuRequestController::class, 'storePublic'])
+    ->middleware('throttle:5,1')
     ->name('request-menu.store');
 
-// --- DASHBOARD ---
-Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware(['auth', 'verified'])
-    ->name('dashboard');
+Route::get('/', function () { return view('welcome'); });
 
-// --- SEMUA ROUTE YANG BUTUH LOGIN (AUTH) ---
-Route::middleware('auth')->group(function () {
+// 2. RUTE AUTHENTICATED
+Route::middleware(['auth', 'verified'])->group(function () {
+    
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    // 1. PROFILE
+    // PROFILE
     Route::controller(ProfileController::class)->prefix('profile')->name('profile.')->group(function () {
         Route::get('/', 'edit')->name('edit');
         Route::patch('/', 'update')->name('update');
         Route::delete('/', 'destroy')->name('destroy');
     });
 
-    // 2. BARANG MASUK & TRANSAKSI
-    Route::controller(TransactionController::class)->prefix('transactions')->name('transactions.')->group(function () {
-        Route::get('/recap', 'recap')->name('recap'); // Custom ditaruh paling atas
-        Route::get('/in', 'indexIn')->name('in');
-        Route::get('/in/create', 'createIn')->name('createIn');
-        Route::post('/in', 'storeIn')->name('storeIn');
-        Route::get('/in/{id}/edit', 'editIn')->name('editIn');
-        Route::put('/in/{id}', 'updateIn')->name('updateIn');
-        Route::delete('/in/{id}', 'destroyIn')->name('destroyIn');
+    // PERIODE & ARSIP (PENTING: Export & Close di atas resource agar tidak konflik)
+    Route::controller(PeriodController::class)->prefix('periods')->name('periods.')->group(function () {
+        Route::post('/close', 'closePeriod')->name('close');
+        Route::get('/{id}/export-excel', 'exportExcel')->name('export-excel');
     });
+    Route::resource('periods', PeriodController::class);
 
-    // 3. PERIODE
-    Route::get('/periods', [PeriodController::class, 'index'])->name('periods.index');
-    Route::get('/periods/create', [PeriodController::class, 'create'])->name('periods.create');
-    Route::post('/periods', [PeriodController::class, 'store'])->name('periods.store');
-    Route::post('/periods/close', [PeriodController::class, 'closePeriod'])->name('periods.close');
-    Route::delete('/periods/{period}', [PeriodController::class, 'destroy'])->name('periods.destroy');
-
-    // 4. PENERIMA MANFAAT (BENEFICIARIES)
-    Route::get('/beneficiaries/create-posyandu', [BeneficiaryController::class, 'createPosyandu'])->name('beneficiaries.create-posyandu');
-    Route::resource('beneficiaries', BeneficiaryController::class); 
-    // Catatan: Route manual (index & store) dihapus karena sudah otomatis ditangani oleh Route::resource
-
-    // 5. MASTER BAHAN (ITEMS)
+    // BARANG & TRANSAKSI (Gudang)
     Route::resource('items', ItemController::class);
-    // Catatan: Route manual (create & store) dihapus karena sudah otomatis ditangani oleh Route::resource
-
-    // 6. MASTER MENU & RESEP
-    Route::post('/menus/{menu}/ingredients', [MenuController::class, 'addIngredient'])->name('menus.ingredients.add');
-    Route::delete('/menus/{menu}/ingredients/{item}', [MenuController::class, 'removeIngredient'])->name('menus.ingredients.remove');
-    Route::get('/menus/{menu}/plan', [MenuController::class, 'plan'])->name('menus.plan');
-    Route::resource('menus', MenuController::class);
-
-    // 7. JADWAL MENU (KALENDER)
-    Route::post('/daily-menus/{dailyMenu}/execute', [DailyMenuController::class, 'execute'])->name('daily-menus.execute');
-    Route::resource('daily-menus', DailyMenuController::class)->only(['index', 'store', 'destroy']);
-
-    // 8. REKAP PENGGUNAAN
+    Route::controller(TransactionController::class)->prefix('transactions')->name('transactions.')->group(function () {
+        Route::get('/recap', 'recap')->name('recap');
+        Route::get('/in', 'indexIn')->name('in');
+        Route::get('/in/create', 'createIn')->name('in-create');
+        Route::post('/in', 'storeIn')->name('storeIn');
+        Route::get('/incoming-check', 'checkIncomingOrder')->name('check-order');
+        Route::post('/incoming-check/store', 'storeIncomingCheck')->name('store-check');
+        Route::get('/out/create', 'createOut')->name('out-create');
+        Route::post('/out/store', 'storeOut')->name('store-out');
+        Route::get('/return/create', 'createReturn')->name('return-create');
+        Route::post('/return/store', 'storeReturn')->name('store-return');
+    });
     Route::get('/usage-recaps', [UsageRecapController::class, 'index'])->name('usage-recaps.index');
 
-    Route::get('/periods/create', [App\Http\Controllers\PeriodController::class, 'create'])->name('periods.create');
-    Route::post('/periods', [App\Http\Controllers\PeriodController::class, 'store'])->name('periods.store');
+    // PENERIMA MANFAAT
+    Route::resource('beneficiaries', BeneficiaryController::class);
 
-    // Rute Kelola Target Porsi Harian (Kalender)
-    Route::get('/daily-targets', [App\Http\Controllers\DailyTargetController::class, 'index'])->name('daily-targets.index');
-    Route::post('/daily-targets/update', [App\Http\Controllers\DailyTargetController::class, 'updateBulk'])->name('daily-targets.update');
-    Route::get('/purchase-plan', [App\Http\Controllers\PurchasePlanController::class, 'index'])->name('purchase-plan.index');
+    // MENU & RESEP
+    Route::resource('menus', MenuController::class);
+    Route::controller(MenuController::class)->prefix('menus')->name('menus.')->group(function () {
+        Route::post('/{menu}/ingredients', 'addIngredient')->name('ingredients.add');
+        Route::delete('/{menu}/ingredients/{item}', 'removeIngredient')->name('ingredients.remove');
+    });
 
-    // Rute untuk Ahli Gizi
-    Route::get('/purchase-plan', [App\Http\Controllers\PurchasePlanController::class, 'index'])->name('purchase-plan.index');
-    Route::post('/purchase-plan/save', [App\Http\Controllers\PurchasePlanController::class, 'saveOrder'])->name('purchase-plan.save-order');
+    // JADWAL MENU (Daily Menus)
+    Route::delete('/daily-menus/destroy-all', [DailyMenuController::class, 'destroyAll'])->name('daily-menus.destroy-all');
+    Route::resource('daily-menus', DailyMenuController::class)->except(['create', 'edit', 'update']);
+    Route::post('/daily-menus/{dailyMenu}/execute', [DailyMenuController::class, 'execute'])->name('daily-menus.execute');
 
-    // Rute untuk Admin Gudang (VVIP)
-    Route::get('/transactions/incoming-check', [App\Http\Controllers\TransactionController::class, 'checkIncomingOrder'])->name('transactions.check-order');
-    Route::post('/transactions/incoming-check/store', [App\Http\Controllers\TransactionController::class, 'storeIncomingCheck'])->name('transactions.store-check');
+    // TARGET, PURCHASE PLAN & KATALOG
+    Route::controller(DailyTargetController::class)->prefix('daily-targets')->name('daily-targets.')->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::post('/update', 'updateBulk')->name('update');
+    });
 
-    // Rute Pemakaian Darurat (Barang Keluar)
-    Route::get('/transactions/out/create', [App\Http\Controllers\TransactionController::class, 'createOut'])->name('transactions.out-create');
-    Route::post('/transactions/out/store', [App\Http\Controllers\TransactionController::class, 'storeOut'])->name('transactions.store-out');
+    Route::controller(PurchasePlanController::class)->prefix('purchase-plan')->name('purchase-plan.')->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::post('/save', 'saveOrder')->name('save-order');
+        Route::put('/update', 'updateOrder')->name('update-order');
+        Route::delete('/delete', 'destroyOrder')->name('destroy-order');
+    });
 
-    // Rute Pengembalian Sisa Bahan (Retur Dapur)
-    Route::get('/transactions/return/create', [App\Http\Controllers\TransactionController::class, 'createReturn'])->name('transactions.return-create');
-    Route::post('/transactions/return/store', [App\Http\Controllers\TransactionController::class, 'storeReturn'])->name('transactions.store-return');
+    Route::resource('menu-catalogs', MenuCatalogController::class);
 
-    Route::put('/purchase-plan/update', [App\Http\Controllers\PurchasePlanController::class, 'updateOrder'])->name('purchase-plan.update-order');
-    Route::delete('/purchase-plan/delete', [App\Http\Controllers\PurchasePlanController::class, 'destroyOrder'])->name('purchase-plan.destroy-order');
-
-    Route::resource('menu-catalogs', App\Http\Controllers\MenuCatalogController::class);
-
-    // Kelola Kas Staff
-    Route::resource('staff-cash', App\Http\Controllers\StaffCashController::class)->only(['index', 'store', 'destroy']);
-
+    // KEUANGAN
+    Route::resource('staff-cash', StaffCashController::class)->only(['index', 'store', 'destroy']);
 });
 
 require __DIR__.'/auth.php';

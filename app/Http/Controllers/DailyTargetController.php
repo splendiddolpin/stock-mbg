@@ -59,6 +59,7 @@ class DailyTargetController extends Controller
     }
 
     // Menyimpan perubahan porsi/libur secara massal
+    // Menyimpan perubahan porsi/libur secara massal
     public function updateBulk(Request $request)
     {
         $request->validate([
@@ -67,18 +68,58 @@ class DailyTargetController extends Controller
         ]);
 
         foreach ($request->targets as $targetId => $data) {
-            $target = DailyTarget::find($targetId);
+            $target = DailyTarget::with('beneficiary')->find($targetId);
+            
             if ($target) {
-                $target->update([
-                    'porsi_besar'       => $data['porsi_besar'] ?? 0,
-                    'porsi_kecil'       => $data['porsi_kecil'] ?? 0,
-                    'total_balita'      => $data['total_balita'] ?? 0,
-                    'total_bumil_busui' => $data['total_bumil_busui'] ?? 0,
-                    'is_holiday'        => isset($data['is_holiday']) ? true : false,
-                ]);
+                $isHolidayInput = isset($data['is_holiday']) ? true : false;
+                
+                // --- LOGIKA AUTO-SHIFT POSYANDU ---
+                // Jika PM adalah posyandu, dan sebelumnya hari ini TIDAK libur, tapi SEKARANG diliburkan
+                // DAN dia punya porsi yang harusnya dikirim hari ini...
+                if ($target->beneficiary->type === 'posyandu' && !$target->is_holiday && $isHolidayInput && ($target->total_balita > 0 || $target->total_bumil_busui > 0)) {
+                    
+                    // 1. Ambil porsinya sebelum hangus
+                    $porsiBalita = $target->total_balita;
+                    $porsiBumil = $target->total_bumil_busui;
+                    
+                    // 2. Cari hari aktif terdekat berikutnya dalam periode yang sama
+                    $hariPengganti = DailyTarget::where('period_id', $target->period_id)
+                        ->where('beneficiary_id', $target->beneficiary_id)
+                        ->where('date', '>', $target->date)
+                        ->where('is_holiday', false) // Cari yang bukan hari libur
+                        ->orderBy('date', 'asc')
+                        ->first();
+
+                    // 3. Jika ketemu hari pengganti, pindahkan porsinya ke sana!
+                    if ($hariPengganti) {
+                        $hariPengganti->total_balita = $porsiBalita;
+                        $hariPengganti->total_bumil_busui = $porsiBumil;
+                        $hariPengganti->save();
+                    }
+                }
+
+                // Setelah logika auto-shift aman, baru kita update data hari ininya
+                // Jika libur dicentang, otomatis nol-kan semua porsi agar tidak salah belanja
+                if ($isHolidayInput) {
+                    $target->update([
+                        'porsi_besar'       => 0,
+                        'porsi_kecil'       => 0,
+                        'total_balita'      => 0,
+                        'total_bumil_busui' => 0,
+                        'is_holiday'        => true,
+                    ]);
+                } else {
+                    $target->update([
+                        'porsi_besar'       => $data['porsi_besar'] ?? 0,
+                        'porsi_kecil'       => $data['porsi_kecil'] ?? 0,
+                        'total_balita'      => $data['total_balita'] ?? 0,
+                        'total_bumil_busui' => $data['total_bumil_busui'] ?? 0,
+                        'is_holiday'        => false,
+                    ]);
+                }
             }
         }
 
-        return back()->with('success', 'Target porsi & status libur untuk tanggal ' . Carbon::parse($request->date)->translatedFormat('d F Y') . ' berhasil diperbarui!');
+        return back()->with('success', 'Target porsi & status libur untuk tanggal ' . Carbon::parse($request->date)->translatedFormat('d F Y') . ' berhasil diperbarui! (Jadwal Posyandu yang tergeser otomatis disesuaikan).');
     }
 }

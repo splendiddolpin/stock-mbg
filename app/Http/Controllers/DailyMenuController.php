@@ -144,4 +144,16 @@ class DailyMenuController extends Controller
         $dailyMenu->delete();
         return back()->with('success', 'Jadwal menu berhasil dihapus!');
     }
+
+    public function destroyAll()
+    {
+        $activePeriod = \App\Models\Period::where('is_active', true)->first();
+        
+        if ($activePeriod) {
+            // Hapus semua jadwal menu yang berada dalam rentang tanggal periode aktif
+            \App\Models\DailyMenu::whereBetween('date', [$activePeriod->start_date, $activePeriod->end_date])->delete();
+        }
+
+        return redirect()->back()->with('success', 'Semua jadwal masak pada periode ini telah berhasil di-reset / dihapus!');
+    }
 }

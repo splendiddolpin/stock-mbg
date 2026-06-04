@@ -5,7 +5,7 @@
                 <span class="bg-indigo-100 text-indigo-600 p-2 rounded-lg">📅</span>
                 {{ __('Kelola Periode Kegiatan MBG') }}
             </h2>
-            <a href="{{ route('periods.create') }}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-5 rounded-xl shadow-md transition-all flex items-center gap-2 text-sm">
+            <a href="{{ route('periods.create') }}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-5 rounded-xl shadow-md transition-all flex items-center gap-2 text-sm active:scale-95">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                 Buka Periode Baru (14 Hari)
             </a>
@@ -28,8 +28,9 @@
             @endif
 
             <div class="bg-white overflow-hidden shadow-sm border border-gray-200 sm:rounded-2xl">
-                <div class="p-4 bg-gray-50 border-b border-gray-200">
-                    <h3 class="font-bold text-gray-700">Sejarah / Arsip Buku Periode</h3>
+                <div class="p-4 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
+                    <span class="text-xl">🗄️</span>
+                    <h3 class="font-black text-gray-700">Sejarah / Arsip Buku Periode</h3>
                 </div>
                 <div class="overflow-x-auto p-0">
                     <table class="w-full text-sm text-left">
@@ -39,13 +40,13 @@
                                 <th class="py-3.5 px-6 text-center">Tanggal Mulai</th>
                                 <th class="py-3.5 px-6 text-center">Tanggal Berakhir</th>
                                 <th class="py-3.5 px-6 text-center">Status Buku</th>
-                                <th class="py-3.5 px-6 text-center">Aksi Pengelolaan</th>
+                                <th class="py-3.5 px-6 text-center w-64">Aksi Pengelolaan</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 text-gray-600">
                             @forelse($periods as $p)
                                 <tr class="hover:bg-gray-50/80 transition-colors">
-                                    <td class="py-4 px-6 font-bold text-gray-900 text-base">
+                                    <td class="py-4 px-6 font-black text-gray-900 text-base">
                                         {{ $p->name }}
                                     </td>
                                     <td class="py-4 px-6 text-center font-medium">
@@ -56,11 +57,11 @@
                                     </td>
                                     <td class="py-4 px-6 text-center">
                                         @if($p->is_active)
-                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 animate-pulse">
+                                            <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm animate-pulse">
                                                 🟢 Berjalan (Aktif)
                                             </span>
                                         @else
-                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-600 border border-gray-200">
+                                            <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-gray-100 text-gray-600 border border-gray-200 shadow-sm">
                                                 🔒 Sudah Tutup Buku
                                             </span>
                                         @endif
@@ -70,16 +71,16 @@
                                             @if($p->is_active)
                                                 <form action="{{ route('periods.close') }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin melakukan TUTUP BUKU pada periode berjalan ini?');">
                                                     @csrf
-                                                    <button type="submit" class="text-xs font-bold bg-orange-50 text-orange-700 border border-orange-200 px-3 py-1.5 rounded-lg hover:bg-orange-600 hover:text-white transition-all shadow-sm">
-                                                        Tutup Buku
+                                                    <button type="submit" class="text-xs font-black bg-orange-50 text-orange-700 border border-orange-200 px-4 py-2 rounded-xl hover:bg-orange-600 hover:text-white transition-all shadow-sm flex items-center gap-2">
+                                                        📦 Tutup Buku
                                                     </button>
                                                 </form>
                                             @else
-                                                <form action="{{ route('periods.destroy', $p->id) }}" method="POST" onsubmit="return confirm('PERHATIAN: Menghapus sejarah periode akan menghapus arsip target porsi harian pada tanggal tersebut. Lanjutkan?');">
+                                                <form action="{{ route('periods.destroy', $p->id) }}" method="POST" onsubmit="return confirm('PERHATIAN KERAS! 🚨\n\nSistem akan men-download file Excel rekap akhir terlebih dahulu, lalu MENGHAPUS PERMANEN seluruh arsip periode ini dari database. Lanjutkan?');">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="text-xs font-bold bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-600 hover:text-white transition-all shadow-sm">
-                                                        Hapus Arsip
+                                                    <button type="submit" class="text-[11px] uppercase tracking-wider font-black bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-xl hover:bg-red-600 hover:text-white transition-all shadow-sm flex items-center gap-2">
+                                                        📥 Export & Hapus
                                                     </button>
                                                 </form>
                                             @endif
