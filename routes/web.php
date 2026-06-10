@@ -40,7 +40,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::controller(TransactionController::class)->prefix('transactions')->name('transactions.')->group(function () {
         Route::get('/recap', 'recap')->name('recap');
         Route::get('/in', 'indexIn')->name('in');
-        Route::get('/in/create', 'createIn')->name('in-create');
+       Route::get('/in/create', 'createIn')->name('createIn');
         Route::post('/in', 'storeIn')->name('storeIn');
         Route::get('/incoming-check', 'checkIncomingOrder')->name('check-order');
         Route::post('/incoming-check/store', 'storeIncomingCheck')->name('store-check');
@@ -52,6 +52,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/usage-recaps', [UsageRecapController::class, 'index'])->name('usage-recaps.index');
 
     // PENERIMA MANFAAT
+    Route::get('/beneficiaries/create-posyandu', [BeneficiaryController::class, 'createPosyandu'])->name('beneficiaries.create-posyandu');
+    Route::resource('beneficiaries', BeneficiaryController::class);
     Route::resource('beneficiaries', BeneficiaryController::class);
 
     // MENU & RESEP
