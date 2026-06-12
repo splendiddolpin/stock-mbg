@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Period extends Model
 {
-    protected $fillable = ['name', 'start_date', 'end_date', 'is_active'];
+    protected $fillable = ['name', 'start_date', 'end_date', 'is_active', 'excel_path', 'google_drive_id'];
 
     // Relasi lama (jangan dihapus)
     public function transactions()

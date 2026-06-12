@@ -5,9 +5,16 @@
                 <span class="bg-emerald-100 text-emerald-600 p-2 rounded-lg">🛡️</span>
                 {{ __('Verifikasi Penerimaan Barang Datang') }}
             </h2>
-            <div class="bg-white px-4 py-2 border border-gray-200 rounded-lg text-sm font-bold text-gray-600 shadow-sm">
-                Periode Aktif: <span class="text-emerald-600">{{ $activePeriod ? $activePeriod->name : 'Tidak Ada' }}</span>
-            </div>
+            <form action="" method="GET" class="flex items-center gap-3">
+            <label class="text-sm font-bold text-gray-700 hidden md:block">Fokus Periode:</label>
+            <select name="period_id" onchange="this.form.submit()" class="rounded-xl border-gray-300 shadow-sm text-sm focus:ring-emerald-500 focus:border-emerald-500 font-semibold text-emerald-700 bg-emerald-50 cursor-pointer">
+                @foreach($allPeriods as $p)
+                    <option value="{{ $p->id }}" {{ $activePeriod->id == $p->id ? 'selected' : '' }}>
+                        {{ $p->name }} {{ $p->is_active ? '🔥 (Aktif Hari Ini)' : '' }}
+                    </option>
+                @endforeach
+            </select>
+        </form>
         </div>
     </x-slot>
 

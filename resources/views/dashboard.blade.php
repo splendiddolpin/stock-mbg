@@ -1,5 +1,4 @@
 @php
-    // --- KITA BERSIHKAN BLOK INI ---
     // Semua hitungan belanja besok sudah dikerjakan di DashboardController.
     // Di sini kita cuma perlu panggil data Menu TERBARU (Top 5) untuk kotak bawah,
     // dan menggabungkan target porsi untuk estimasi resep.
@@ -7,8 +6,6 @@
     $menusWithItems  = \App\Models\Menu::with('items')->latest()->take(5)->get();
 
     // Gabungkan Target Sesuai Kesepakatan Ahli Gizi:
-    // Porsi Besar = Sekolah Besar + Bumil
-    // Porsi Kecil = Sekolah Kecil + Balita
     $masterPorsiBesar = $beneficiaries->where('type', 'sekolah')->sum('porsi_besar') + $beneficiaries->where('type', 'posyandu')->sum('total_bumil_busui');
     $masterPorsiKecil = $beneficiaries->where('type', 'sekolah')->sum('porsi_kecil') + $beneficiaries->where('type', 'posyandu')->sum('total_balita');
 @endphp
@@ -146,28 +143,46 @@
             </div>
         @endif
 
-        <div class="bg-indigo-50 border-l-4 border-indigo-500 p-6 rounded-2xl shadow-sm mt-8 mb-6">
-            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+        @if(isset($activePeriod))
+            <div class="bg-indigo-50 border-l-4 border-indigo-500 p-6 rounded-2xl shadow-sm mt-8 mb-6">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div>
+                        <h3 class="text-lg font-black text-indigo-900 flex items-center gap-2">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
+                            Tutup Periode Saat Ini (Arsip)
+                        </h3>
+                        <p class="text-sm text-indigo-700 mt-1 font-medium">
+                            Tindakan ini akan <strong>mengakhiri periode aktif</strong>. Seluruh data rekap penggunaan bahan dan target harian akan <strong>disimpan secara aman sebagai arsip</strong>.
+                        </p>
+                        <p class="text-xs text-indigo-500 mt-2 font-bold flex items-center gap-1 bg-indigo-100 w-fit px-2 py-1 rounded">
+                            <span>🤖</span> Info: Sistem juga otomatis menutup periode setiap Kamis jam 11:15 WIB.
+                        </p>
+                    </div>
+                    
+                    <form action="{{ route('periods.close') }}" method="POST" onsubmit="return confirm('Tutup Buku: Apakah Anda yakin ingin menutup periode ini SECARA MANUAL sekarang? Pastikan semua transaksi hari ini sudah selesai.');">
+                        @csrf
+                        <button type="submit" class="bg-indigo-700 hover:bg-indigo-800 text-white font-bold py-3 px-6 rounded-xl shadow border border-indigo-900 transition-all flex items-center gap-2 active:scale-95 whitespace-nowrap">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            Tutup Buku Manual
+                        </button>
+                    </form>
+                </div>
+            </div>
+        @else
+            <div class="bg-slate-50 border-l-4 border-slate-400 p-6 rounded-2xl shadow-sm mt-8 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
-                    <h3 class="text-lg font-black text-indigo-900 flex items-center gap-2">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
-                        Tutup Periode Saat Ini (Arsip)
+                    <h3 class="text-lg font-black text-slate-800 flex items-center gap-2">
+                        🔒 Periode Telah Ditutup
                     </h3>
-                    <p class="text-sm text-indigo-700 mt-1 font-medium">
-                        Tindakan ini akan <strong>mengakhiri periode aktif</strong>. Seluruh data rekap penggunaan bahan dan target harian akan <strong>disimpan secara aman sebagai arsip</strong> untuk laporan.
+                    <p class="text-sm text-slate-600 mt-1 font-medium">
+                        Saat ini tidak ada periode kegiatan yang sedang berjalan (sudah ditutup manual/otomatis). Buka periode baru untuk mencatat transaksi.
                     </p>
                 </div>
-                
-                <form action="{{ route('periods.close') }}" method="POST" onsubmit="return confirm('Tutup Buku: Apakah Anda yakin ingin menutup periode ini? Pastikan semua transaksi hari ini sudah diselesaikan.');">
-                    @csrf
-                    <button type="submit" class="bg-indigo-700 hover:bg-indigo-800 text-white font-bold py-3 px-6 rounded-xl shadow border border-indigo-900 transition-all flex items-center gap-2 active:scale-95 whitespace-nowrap">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        Tutup Buku Periode
-                    </button>
-                </form>
+                <a href="{{ route('periods.index') }}" class="bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 px-6 rounded-xl shadow transition-all active:scale-95 whitespace-nowrap">
+                    🗂️ Ke Menu Arsip Periode
+                </a>
             </div>
-        </div>
-
+        @endif
         @if(isset($peringatanAlergen) && count($peringatanAlergen) > 0)
             <div class="bg-red-50 border border-red-200 p-6 rounded-2xl shadow-sm mb-6 relative overflow-hidden">
                 <div class="absolute top-0 right-0 p-4 opacity-10">

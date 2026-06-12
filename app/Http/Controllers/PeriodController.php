@@ -8,6 +8,8 @@ use App\Models\Beneficiary;
 use App\Models\DailyMenu;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class PeriodController extends Controller
 {
@@ -19,17 +21,13 @@ class PeriodController extends Controller
     }
 
     // 2. Menampilkan Form Tambah Periode (Create)
+    // 2. Menampilkan Form Tambah Periode (Bebas Buat Kapan Saja)
     public function create()
     {
-        $activePeriod = Period::where('is_active', true)->first();
-        if ($activePeriod) {
-            return redirect()->route('periods.index')->with('error', 'Tidak bisa membuat periode baru karena Periode "' . $activePeriod->name . '" masih aktif! Tutup periode tersebut terlebih dahulu.');
-        }
-
         return view('periods.create');
     }
 
-    // 3. Menyimpan Periode Baru & Generate Otomatis Kalender Target Harian (Store)
+    // 3. Menyimpan Periode Baru & Generate Otomatis Kalender Target Harian
     public function store(Request $request)
     {
         $request->validate([
@@ -37,29 +35,29 @@ class PeriodController extends Controller
             'start_date' => 'required|date',
         ]);
 
-        $activePeriod = Period::where('is_active', true)->first();
-        if ($activePeriod) {
-            return redirect()->back()->with('error', 'Masih ada periode yang aktif. Tutup terlebih dahulu.');
-        }
-
         $startDate = Carbon::parse($request->start_date);
         $endDate = $startDate->copy()->addDays(13); // Otomatis 14 hari penuh
+        $today = Carbon::today();
+
+        // Cek apakah tanggal mulai periode ini adalah hari ini atau sebelumnya
+        // Jika ya, langsung aktifkan. Jika untuk masa depan, biarkan tertidur (false)
+        $isActive = $startDate->lte($today) && $endDate->gte($today);
 
         $period = Period::create([
             'name' => $request->name,
             'start_date' => $startDate->format('Y-m-d'),
             'end_date' => $endDate->format('Y-m-d'),
-            'is_active' => true,
+            'is_active' => $isActive,
         ]);
 
         $beneficiaries = Beneficiary::all();
-
-        // Siapkan Sistem Hutang Jadwal Posyandu
         $hutangPosyandu = [];
+        
         foreach ($beneficiaries->where('type', 'posyandu') as $pm) {
             $hutangPosyandu[$pm->id] = false;
         }
 
+        // Generate Kalender Harian seperti biasa...
         for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
             $isSunday = $date->isSunday();
             $dateString = $date->toDateString();
@@ -76,7 +74,6 @@ class PeriodController extends Controller
                     $isHoliday = true;
                 } else {
                     if ($pm->type === 'sekolah') {
-                        // Sekolah libur di hari Sabtu
                         if ($date->isSaturday()) {
                             $pBesar = $pKecil = 0;
                             $isHoliday = true;
@@ -87,18 +84,15 @@ class PeriodController extends Controller
                         $harusKirimHariIni = $jadwalNormal || $hutangPosyandu[$pm->id];
 
                         if ($harusKirimHariIni) {
-                            // Eksekusi pengiriman
-                            $hutangPosyandu[$pm->id] = false; // Lunasi hutang
+                            $hutangPosyandu[$pm->id] = false; 
                         } else {
-                            // Bukan jadwalnya
                             $tBalita = $tBumil = 0;
                         }
                     }
                 }
 
-                // Cek: Jika ini hari Minggu dan Posyandu harusnya jadwal kirim, jadikan hutang!
                 if ($isSunday && $pm->type === 'posyandu') {
-                    $jadwalNormal = $date->isMonday() || $date->isThursday(); // Logikanya gak mungkin Senin karena ini cek hari Minggu, tapi aman untuk custom holiday nanti
+                    $jadwalNormal = $date->isMonday() || $date->isThursday();
                     if ($jadwalNormal || $hutangPosyandu[$pm->id]) {
                         $hutangPosyandu[$pm->id] = true;
                     }
@@ -117,7 +111,7 @@ class PeriodController extends Controller
             }
         }
 
-        return redirect()->route('periods.index')->with('success', 'Periode baru (14 Hari) berhasil dibuka dan kalender target harian telah di-generate!');
+        return redirect()->route('periods.index')->with('success', 'Jadwal Periode (14 Hari) berhasil ditambahkan ke kalender sistem!');
     }
 
     // 4. Tutup Buku Periode Aktif (Close)
@@ -129,48 +123,85 @@ class PeriodController extends Controller
             $activePeriod->update(['is_active' => false]);
             DailyMenu::truncate(); // Bersihkan sisa jadwal besok/hari ini yang menggantung
 
-            return redirect()->route('periods.index')->with('success', 'Periode berhasil ditutup! Data aman diarsipkan.');
+            return redirect()->route('periods.index')->with('success', 'Periode berhasil ditutup! Data aman diarsipkan (Siap disapu DB).');
         }
 
         return redirect()->route('periods.index')->with('error', 'Tidak ada periode aktif yang bisa ditutup.');
     }
 
-    // 5. Menghapus Periode sekaligus Export Excel (Destroy & Export)
+    // 5. Fitur Preview & Download Arsip (Kebal ERR_INVALID_RESPONSE)
+    // 5. Fitur Preview & Download Arsip (Kebal ERR_INVALID_RESPONSE)
+    public function exportExcel(Period $period)
+    {
+        $safeName = preg_replace('/[^A-Za-z0-9\-\._]/', '_', $period->name ?? 'Periode_' . $period->id);
+
+        // =================================================================
+        // SKENARIO 1: JIKA PERIODE SUDAH DIARSIPKAN (AMBIL FILE FISIK)
+        // =================================================================
+        if ($period->excel_path) {
+            $excelPath = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $period->excel_path);
+            
+            $pathPrivate = storage_path('app/private' . DIRECTORY_SEPARATOR . $excelPath);
+            $pathPublic = storage_path('app' . DIRECTORY_SEPARATOR . $excelPath);
+
+            $targetFile = null;
+            if (file_exists($pathPrivate)) {
+                $targetFile = $pathPrivate;
+            } elseif (file_exists($pathPublic)) {
+                $targetFile = $pathPublic;
+            }
+
+            if ($targetFile) {
+                $downloadName = "Arsip_Final_MBG_{$safeName}.xls";
+                return response()->download($targetFile, $downloadName);
+            }
+
+            // Jika database bilang sudah diarsipkan tapi file fisiknya hilang
+            return redirect()->route('archives.index')->with('error', 'File fisik untuk periode ini tidak ditemukan di server.');
+        }
+
+        // =================================================================
+        // SKENARIO 2: JIKA PERIODE MASIH AKTIF / PREVIEW (AMBIL DARI DATABASE)
+        // =================================================================
+        $excelContent = view('periods.export', compact('period'))->render();
+        $downloadName = "Preview_MBG_{$safeName}.xls";
+
+        return response($excelContent)
+            ->header('Content-Type', 'application/vnd.ms-excel')
+            ->header('Content-Disposition', 'attachment; filename="' . $downloadName . '"');
+    }
+
+    // 6. Arsipkan & Sapu Database Secara Permanen
     public function destroy(Period $period)
     {
         if ($period->is_active) {
-            return redirect()->back()->with('error', 'Periode yang sedang aktif tidak boleh dihapus langsung! Tutup periode terlebih dahulu.');
+            return redirect()->back()->with('error', 'Periode yang sedang aktif tidak boleh diarsipkan! Tutup periode terlebih dahulu.');
         }
 
-        // 1. SIAPKAN DATA (Ambil berdasarkan rentang tanggal periode)
-        $periodName = str_replace(' ', '_', $period->name);
-        $fileName = "Arsip_Lengkap_MBG_{$periodName}.xls";
-        $startDate = $period->start_date;
-        $endDate = $period->end_date;
+        if ($period->excel_path) {
+            return redirect()->back()->with('error', 'Periode ini sudah pernah diarsipkan dan dibersihkan dari database.');
+        }
 
-        $dataTargetHarian = $period->dailyTargets()->with('beneficiary')->orderBy('date', 'asc')->get();
+        $startDate = Carbon::parse($period->start_date)->format('Y-m-d');
+        $endDate = Carbon::parse($period->end_date)->format('Y-m-d');
+        $periodName = Str::slug($period->name, '_');
+        $fileName = "Arsip_Matang_MBG_{$periodName}_FROZEN.xls";
+
+        // LANGKAH KRITIS: Render isi Excel saat data di database MASIH UTUH
+        $excelContent = view('periods.export', compact('period'))->render();
+
+        // Simpan file fisiknya ke server lokal (Dibekukan selamanya)
+        $savePath = "excel_archives/{$fileName}";
+        Storage::disk('local')->put($savePath, $excelContent);
+
+        // Tandai alamat file fisiknya di database
+        $period->update(['excel_path' => $savePath]);
         
-        // Ambil data Barang Keluar (UsageRecap)
-        $dataBarangKeluar = \App\Models\UsageRecap::with(['item', 'menu'])
-            ->whereBetween('date', [$startDate, $endDate])->orderBy('date', 'asc')->get();
-            
-        // Ambil data Barang Masuk (Transaction tipe 'in')
-        $dataBarangMasuk = \App\Models\Transaction::with('item')
-            ->where('type', 'in')
-            ->whereBetween('date', [$startDate, $endDate])->orderBy('date', 'asc')->get();
-
-        // 2. PEMUSNAHAN MASSAL DARI DATABASE
+        // SEKARANG BARU AMAN UNTUK DISAPU BERSIH! (DB Menjadi sangat enteng)
         $period->dailyTargets()->delete();
-        \App\Models\UsageRecap::whereBetween('date', [$startDate, $endDate])->delete();
-        \App\Models\Transaction::whereBetween('date', [$startDate, $endDate])->delete();
-        $period->delete();
+        \App\Models\UsageRecap::whereBetween('date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])->delete();
+        \App\Models\Transaction::whereBetween('date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])->delete();
 
-        // 3. GENERATE BLADE VIEW MENJADI FILE EXCEL
-        return response()->streamDownload(function() use($period, $dataTargetHarian, $dataBarangKeluar, $dataBarangMasuk) {
-            echo view('periods.export', compact('period', 'dataTargetHarian', 'dataBarangKeluar', 'dataBarangMasuk'))->render();
-        }, $fileName, [
-            "Content-type"        => "application/vnd.ms-excel",
-            "Content-Disposition" => "attachment; filename={$fileName}",
-        ]);
+        return redirect()->route('periods.index')->with('success', 'Sistem Arsip Sukses! File Excel telah dibekukan di server, dan database berhasil disapu bersih.');
     }
 }

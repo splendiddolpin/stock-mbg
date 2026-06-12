@@ -14,7 +14,14 @@ class PurchasePlanController extends Controller
 {
     public function index(Request $request)
     {
-        $activePeriod = Period::where('is_active', true)->first();
+        // Hanya panggil periode yang belum dibekukan/diarsipkan
+        $allPeriods = \App\Models\Period::whereNull('excel_path')->orderBy('start_date', 'asc')->get();
+
+        // LOGIKA PINTAR: Cari periode dari Dropdown, jika tidak ada, ambil yang Aktif/Terbaru
+        $activePeriod = $request->has('period_id') 
+            ? Period::find($request->period_id) 
+            : (Period::where('is_active', true)->first() ?? Period::latest()->first());
+
         $rekapBahan = [];
         $calendarData = [];
         $menusHariIni = collect();
@@ -29,6 +36,7 @@ class PurchasePlanController extends Controller
             $startDate = Carbon::parse($activePeriod->start_date);
             $endDate = Carbon::parse($activePeriod->end_date);
 
+            // JIKA TANGGAL YANG DIKLIK BERADA DI LUAR PERIODE TERPILIH, PAKSA KEMBALI KE HARI PERTAMA PERIODE TERSEBUT
             if ($selectedDate < $activePeriod->start_date || $selectedDate > $activePeriod->end_date) {
                 $selectedDate = $activePeriod->start_date;
             }
@@ -63,7 +71,7 @@ class PurchasePlanController extends Controller
 
             if ($menusHariIni->isNotEmpty()) {
                 $targets = DailyTarget::with('beneficiary')
-                    ->where('period_id', $activePeriod->id)
+                    ->where('period_id', $activePeriod->id) // PASTI SESUAI DENGAN PERIODE TERPILIH
                     ->where('date', $selectedDate)
                     ->where('is_holiday', false)->get();
 
@@ -85,14 +93,13 @@ class PurchasePlanController extends Controller
                         }
                     }
 
-                    // --- BAGIAN INI YANG DIUBAH: TAMBAHKAN 'stock' ---
                     foreach ($jadwal->menu->items as $item) {
                         if (!isset($rekapBahan[$item->id])) {
                             $rekapBahan[$item->id] = [
                                 'id' => $item->id, 
                                 'name' => $item->name, 
                                 'unit' => $item->unit, 
-                                'stock' => $item->stock_system, // <-- Data stok diambil
+                                'stock' => $item->stock_system,
                                 'total_kebutuhan' => 0, 
                                 'pesan' => 0
                             ];
@@ -103,7 +110,7 @@ class PurchasePlanController extends Controller
                     }
                 }
 
-                // 4. CEK & GABUNGKAN JIKA ADA PO LAMA DI DATABASE (EDIT MODE) ATAU SET DEFAULT NOL
+                // 4. CEK & GABUNGKAN JIKA ADA PO LAMA DI DATABASE
                 $existingPOs = DB::table('purchase_orders')->where('date_of_cooking', $selectedDate)->get();
                 $hasExistingOrder = $existingPOs->isNotEmpty();
                 
@@ -111,19 +118,16 @@ class PurchasePlanController extends Controller
                     $poStatus = $existingPOs->first()->status;
                     $poMap = $existingPOs->keyBy('item_id');
 
-                    // Timpa angka pesanan dengan data yang pernah disave Ahli Gizi
                     foreach ($rekapBahan as $key => $bahan) {
                         if ($poMap->has($key)) {
                             $rekapBahan[$key]['pesan'] = $poMap[$key]->qty_ordered;
                             $poMap->forget($key);
                         } else {
-                            // Hitung defisit pintar jika belum di-PO
                             $defisit = $bahan['total_kebutuhan'] - $bahan['stock'];
                             $rekapBahan[$key]['pesan'] = $defisit > 0 ? $defisit : 0;
                         }
                     }
 
-                    // Jika dulu Ahli gizi nambah bumbu manual, masukkan juga ke list
                     foreach ($poMap as $item_id => $po) {
                         $itemMaster = Item::find($item_id);
                         if($itemMaster) {
@@ -135,7 +139,6 @@ class PurchasePlanController extends Controller
                         }
                     }
                 } else {
-                    // --- LOGIKA BARU: Jika belum PO, hitung defisit. Jika stok cukup, set pesanan = 0 ---
                     foreach ($rekapBahan as $key => $bahan) {
                         $defisit = $bahan['total_kebutuhan'] - $bahan['stock'];
                         $rekapBahan[$key]['pesan'] = $defisit > 0 ? $defisit : 0;
@@ -146,7 +149,8 @@ class PurchasePlanController extends Controller
             }
         }
 
-        return view('purchase-plan.index', compact('activePeriod', 'calendarData', 'selectedDate', 'menusHariIni', 'rekapBahan', 'allItems', 'hasExistingOrder', 'poStatus'));
+        // Jangan lupa kirim $allPeriods ke view
+        return view('purchase-plan.index', compact('activePeriod', 'allPeriods', 'calendarData', 'selectedDate', 'menusHariIni', 'rekapBahan', 'allItems', 'hasExistingOrder', 'poStatus'));
     }
 
     public function saveOrder(Request $request)

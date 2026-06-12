@@ -12,14 +12,20 @@ use Illuminate\Support\Facades\DB;
 class DailyMenuController extends Controller
 {
     // Menampilkan halaman jadwal sekaligus form tambah
-    public function index()
+    public function index(Request $request)
     {
-        // 1. Ambil periode yang sedang aktif
-        $activePeriod = \App\Models\Period::where('is_active', true)->first();
+        // 1. Ambil SEMUA periode untuk diisi ke Dropdown UI
+        // Hanya panggil periode yang belum dibekukan/diarsipkan
+        $allPeriods = \App\Models\Period::whereNull('excel_path')->orderBy('start_date', 'asc')->get();
+        
+        // 2. LOGIKA PINTAR: Cari periode dari Dropdown, jika tidak ada, ambil yang Aktif/Terbaru
+        $activePeriod = $request->has('period_id') 
+            ? \App\Models\Period::find($request->period_id) 
+            : (\App\Models\Period::where('is_active', true)->first() ?? \App\Models\Period::latest()->first());
         
         $menus = \App\Models\Menu::orderBy('name', 'asc')->get();
         
-        // 2. Tampilkan jadwal HANYA yang ada di dalam periode aktif ini (agar rapi)
+        // 3. Tampilkan jadwal sesuai periode yang TERPILIH
         $schedules = collect();
         if ($activePeriod) {
             $schedules = \App\Models\DailyMenu::with('menu')
@@ -28,8 +34,8 @@ class DailyMenuController extends Controller
                 ->get();
         }
 
-        // Kirim $activePeriod ke view
-        return view('daily-menus.index', compact('menus', 'schedules', 'activePeriod'));
+        // Jangan lupa kirim $allPeriods ke view untuk Dropdown
+        return view('daily-menus.index', compact('menus', 'schedules', 'activePeriod', 'allPeriods'));
     }
 
     // Menyimpan jadwal baru
@@ -145,15 +151,17 @@ class DailyMenuController extends Controller
         return back()->with('success', 'Jadwal menu berhasil dihapus!');
     }
 
-    public function destroyAll()
+    public function destroyAll(Request $request)
     {
-        $activePeriod = \App\Models\Period::where('is_active', true)->first();
+        // Pastikan yang dihapus adalah jadwal dari periode yang sedang DIBUKA di layar
+        $activePeriod = $request->has('period_id') 
+            ? \App\Models\Period::find($request->period_id) 
+            : (\App\Models\Period::where('is_active', true)->first() ?? \App\Models\Period::latest()->first());
         
         if ($activePeriod) {
-            // Hapus semua jadwal menu yang berada dalam rentang tanggal periode aktif
             \App\Models\DailyMenu::whereBetween('date', [$activePeriod->start_date, $activePeriod->end_date])->delete();
         }
 
-        return redirect()->back()->with('success', 'Semua jadwal masak pada periode ini telah berhasil di-reset / dihapus!');
+        return redirect()->back()->with('success', 'Semua jadwal masak pada periode terpilih telah berhasil di-reset / dihapus!');
     }
 }

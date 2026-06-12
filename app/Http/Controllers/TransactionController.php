@@ -10,20 +10,39 @@ use Illuminate\Support\Facades\DB;
 
 class TransactionController extends Controller
 {
-    public function indexIn()
+    public function indexIn(Request $request)
     {
-        $transactions = Transaction::with(['item', 'period'])
-                                   ->where('type', 'in')
-                                   ->orderBy('date', 'desc')
-                                   ->get();
-                                   
-        return view('transactions.in-index', compact('transactions'));
+        // 1. SISTEM INGATAN (Sama seperti halaman kalender)
+        if ($request->has('period_id')) {
+            session(['focus_period_id' => $request->period_id]);
+        }
+
+        $focusId = session('focus_period_id');
+        $allPeriods = Period::whereNull('excel_path')->orderBy('start_date', 'asc')->get();
+
+        $activePeriod = $focusId 
+            ? (Period::find($focusId) ?? Period::where('is_active', true)->first())
+            : (Period::where('is_active', true)->first() ?? Period::latest()->first());
+
+        $transactions = collect();
+
+        // 2. Tampilkan HANYA transaksi masuk di periode yang terpilih
+        if ($activePeriod) {
+            $transactions = Transaction::with(['item', 'period'])
+                                       ->where('type', 'in')
+                                       ->where('period_id', $activePeriod->id)
+                                       ->orderBy('date', 'desc')
+                                       ->get();
+        }
+                                       
+        return view('transactions.in-index', compact('transactions', 'allPeriods', 'activePeriod'));
     }
 
     public function createIn()
     {
         $items = Item::orderBy('name', 'asc')->get();
-        $periods = Period::orderBy('name', 'asc')->get();
+        // Hanya tampilkan periode yang belum diarsipkan
+        $periods = Period::whereNull('excel_path')->orderBy('start_date', 'asc')->get(); 
         return view('transactions.in-create', compact('items', 'periods'));
     }
 
@@ -60,7 +79,8 @@ class TransactionController extends Controller
     {
         $transaction = Transaction::findOrFail($id);
         $items = Item::orderBy('name', 'asc')->get();
-        $periods = Period::orderBy('name', 'asc')->get();
+        // Hanya tampilkan periode yang belum diarsipkan
+        $periods = Period::whereNull('excel_path')->orderBy('start_date', 'asc')->get(); 
         
         return view('transactions.in-edit', compact('transaction', 'items', 'periods'));
     }
@@ -119,32 +139,42 @@ class TransactionController extends Controller
     // Menampilkan halaman verifikasi barang datang dengan UI Kalender 14 Hari
     public function checkIncomingOrder(Request $request)
     {
-        $activePeriod = Period::where('is_active', true)->first();
+        // 1. SISTEM INGATAN
+        if ($request->has('period_id')) {
+            session(['focus_period_id' => $request->period_id]);
+        }
+
+        $focusId = session('focus_period_id');
+        $allPeriods = Period::whereNull('excel_path')->orderBy('start_date', 'asc')->get();
+
+        // 2. Tarik data periode sesuai ingatan
+        $activePeriod = $focusId 
+            ? (Period::find($focusId) ?? Period::where('is_active', true)->first())
+            : (Period::where('is_active', true)->first() ?? Period::latest()->first());
+
         $calendarData = [];
         $pendingOrders = collect();
-
-        // Pilihan tanggal target masak (Default: Hari ini atau tanggal pertama periode)
         $selectedDate = $request->date ?? now()->toDateString();
 
         if ($activePeriod) {
             $startDate = \Carbon\Carbon::parse($activePeriod->start_date);
             $endDate = \Carbon\Carbon::parse($activePeriod->end_date);
 
-            // Jaga agar tanggal yang dipilih tidak melompat keluar dari periode aktif
+            // Jaga agar tanggal tetap di dalam jalur periode terpilih
             if ($selectedDate < $activePeriod->start_date || $selectedDate > $activePeriod->end_date) {
                 $selectedDate = $activePeriod->start_date;
             }
 
-            // 1. HITUNG HIT-COUNT PESANAN PENDING UNTUK INDIKATOR KALENDER
+            // HITUNG HIT-COUNT PESANAN PENDING UNTUK INDIKATOR KALENDER
             $allOrdersInPeriod = DB::table('purchase_orders')
                 ->whereBetween('date_of_cooking', [$activePeriod->start_date, $activePeriod->end_date])
                 ->get()
                 ->groupBy('date_of_cooking');
 
-            // 2. GENERATE DERETAN 14 KOTAK KALENDER
+            // GENERATE DERETAN 14 KOTAK KALENDER
             for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
                 $dString = $date->toDateString();
-                $ordersOnDay = $allMenusInPeriod = $allOrdersInPeriod->get($dString, collect());
+                $ordersOnDay = $allOrdersInPeriod->get($dString, collect());
 
                 $calendarData[] = [
                     'date'         => $dString,
@@ -153,13 +183,12 @@ class TransactionController extends Controller
                     'month'        => $date->translatedFormat('M'),
                     'is_sunday'    => $date->isSunday(),
                     'is_selected'  => $dString === $selectedDate,
-                    // Hitung berapa item pesanan yang belum diverifikasi (pending)
                     'pending_count'=> $ordersOnDay->where('status', 'pending')->count(),
                     'total_count'  => $ordersOnDay->count(),
                 ];
             }
 
-            // 3. TARIK DAFTAR PESANAN PENDING PADA TANGGAL YANG DIKLIK
+            // TARIK DAFTAR PESANAN PENDING PADA TANGGAL YANG DIKLIK (Hanya di periode terpilih)
             $pendingOrders = DB::table('purchase_orders')
                 ->join('items', 'purchase_orders.item_id', '=', 'items.id')
                 ->where('purchase_orders.date_of_cooking', $selectedDate)
@@ -168,7 +197,7 @@ class TransactionController extends Controller
                 ->get();
         }
 
-        return view('transactions.incoming-check', compact('activePeriod', 'calendarData', 'selectedDate', 'pendingOrders'));
+        return view('transactions.incoming-check', compact('activePeriod', 'allPeriods', 'calendarData', 'selectedDate', 'pendingOrders'));
     }
 
     public function storeIncomingCheck(Request $request)

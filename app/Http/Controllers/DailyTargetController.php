@@ -10,30 +10,40 @@ use Carbon\Carbon;
 class DailyTargetController extends Controller
 {
     // Menampilkan halaman penyesuaian porsi dengan UI Kalender
+    // Menampilkan halaman penyesuaian porsi dengan UI Kalender
     public function index(Request $request)
     {
-        $activePeriod = Period::where('is_active', true)->first();
-
-        if (!$activePeriod) {
-            return redirect()->route('dashboard')->with('error', 'Tidak ada periode aktif. Silakan buka periode baru (14 Hari) terlebih dahulu.');
+        // 1. SISTEM INGATAN: Simpan pilihan dropdown ke memori (Session)
+        if ($request->has('period_id')) {
+            session(['focus_period_id' => $request->period_id]);
         }
 
-        // Ambil semua target di periode ini
+        // 2. Tarik ingatan dari Session
+        $focusId = session('focus_period_id');
+        $allPeriods = Period::whereNull('excel_path')->orderBy('start_date', 'asc')->get();
+
+        // 3. LOGIKA PINTAR: Ambil dari ingatan, jika kosong ambil yang aktif
+        $activePeriod = $focusId 
+            ? (Period::find($focusId) ?? Period::where('is_active', true)->first())
+            : (Period::where('is_active', true)->first() ?? Period::latest()->first());
+
+        if (!$activePeriod) {
+            return redirect()->route('dashboard')->with('error', 'Tidak ada periode sama sekali. Silakan buka periode baru (14 Hari) terlebih dahulu.');
+        }
+
         $allTargets = DailyTarget::with('beneficiary')
             ->where('period_id', $activePeriod->id)
             ->orderBy('date', 'asc')
             ->get();
 
-        // Ambil daftar tanggal unik
         $dates = $allTargets->pluck('date')->unique()->values();
-
-        // Tentukan tanggal mana yang sedang dipilih/diklik
         $selectedDate = $request->date ?? now()->toDateString();
+
+        // Jika tanggal yang di-klik berada di luar periode terpilih, paksa ke hari pertama
         if (!$dates->contains($selectedDate)) {
             $selectedDate = $dates->first();
         }
 
-        // Susun data untuk UI Kalender 14 Hari
         $calendarData = [];
         $groupedTargets = $allTargets->groupBy('date');
 
@@ -52,10 +62,9 @@ class DailyTargetController extends Controller
             ];
         }
 
-        // Tarik data target PM khusus untuk diisi di tabel bawah
         $targets = $allTargets->where('date', $selectedDate)->values();
 
-        return view('daily-targets.index', compact('activePeriod', 'calendarData', 'selectedDate', 'targets'));
+        return view('daily-targets.index', compact('activePeriod', 'allPeriods', 'calendarData', 'selectedDate', 'targets'));
     }
 
     // Menyimpan perubahan porsi/libur secara massal

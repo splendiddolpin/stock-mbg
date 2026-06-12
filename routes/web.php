@@ -1,11 +1,13 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schedule;
+use Illuminate\Support\Facades\Artisan;
 use App\Http\Controllers\{
     ProfileController, DashboardController, TransactionController, ItemController,
     PeriodController, BeneficiaryController, MenuController, DailyMenuController,
     UsageRecapController, DailyTargetController, PurchasePlanController, 
-    MenuCatalogController, StaffCashController, MenuRequestController
+    MenuCatalogController, StaffCashController, MenuRequestController, ArchiveController
 };
 
 // 1. RUTE PUBLIK (Tanpa Login)
@@ -48,6 +50,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/out/store', 'storeOut')->name('store-out');
         Route::get('/return/create', 'createReturn')->name('return-create');
         Route::post('/return/store', 'storeReturn')->name('store-return');
+        
     });
     Route::get('/usage-recaps', [UsageRecapController::class, 'index'])->name('usage-recaps.index');
 
@@ -85,6 +88,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // KEUANGAN
     Route::resource('staff-cash', StaffCashController::class)->only(['index', 'store', 'destroy']);
+    Route::post('staff-cash/{id}/pay', [StaffCashController::class, 'payDebt'])->name('staff-cash.pay'); // Rute centang lunas
+
+    // Kelompok Rute Khusus Transaksi Barang Masuk
+    Route::get('/transactions/{transaction}/edit-in', [App\Http\Controllers\TransactionController::class, 'editIn'])->name('transactions.editIn');
+    Route::put('/transactions/{transaction}/update-in', [App\Http\Controllers\TransactionController::class, 'updateIn'])->name('transactions.updateIn');
+    Route::delete('/transactions/{transaction}/destroy-in', [App\Http\Controllers\TransactionController::class, 'destroyIn'])->name('transactions.destroyIn'); // <-- Tambahkan baris ini
+
+    // JALUR DARURAT: BARANG KELUAR MANUAL (PEMAKAIAN EKSTRA)
+    Route::get('/transactions/create-out', [App\Http\Controllers\TransactionController::class, 'createOut'])->name('transactions.createOut');
+    Route::post('/transactions/store-out', [App\Http\Controllers\TransactionController::class, 'storeOut'])->name('transactions.storeOut');
+
+    // Halaman utama daftar arsip file excel
+    Route::get('/archives', [ArchiveController::class, 'index'])->name('archives.index');
+
+    // Proses download filenya
+    Route::get('/archives/download/{filename}', [ArchiveController::class, 'download'])->name('archives.download');
 });
 
 require __DIR__.'/auth.php';

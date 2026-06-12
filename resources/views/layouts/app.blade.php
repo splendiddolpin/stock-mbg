@@ -40,9 +40,9 @@
                                 Dashboard Pusat
                             </a>
 
-                            <div x-data="{ open: {{ request()->routeIs('beneficiaries.*', 'periods.*', 'daily-targets.*', 'transactions.out-create') ? 'true' : 'false' }} }" class="rounded-xl overflow-hidden bg-white border {{ request()->routeIs('beneficiaries.*', 'periods.*', 'daily-targets.*', 'transactions.out-create') ? 'border-purple-200 shadow-sm' : 'border-transparent hover:border-gray-100' }}">
+                            <div x-data="{ open: {{ request()->routeIs('beneficiaries.*', 'periods.*', 'daily-targets.*') ? 'true' : 'false' }} }" class="rounded-xl overflow-hidden bg-white border {{ request()->routeIs('beneficiaries.*', 'periods.*', 'daily-targets.*') ? 'border-purple-200 shadow-sm' : 'border-transparent hover:border-gray-100' }}">
                                 <button @click="open = !open" 
-                                        class="flex items-center justify-between w-full px-3 py-2.5 rounded-xl transition-all duration-200 focus:outline-none {{ request()->routeIs('beneficiaries.*', 'periods.*', 'daily-targets.*', 'transactions.out-create') ? 'bg-purple-50 text-purple-800 font-bold' : 'text-gray-600 hover:bg-gray-50 font-bold' }}">
+                                        class="flex items-center justify-between w-full px-3 py-2.5 rounded-xl transition-all duration-200 focus:outline-none {{ request()->routeIs('beneficiaries.*', 'periods.*', 'daily-targets.*') ? 'bg-purple-50 text-purple-800 font-bold' : 'text-gray-600 hover:bg-gray-50 font-bold' }}">
                                     <div class="flex items-center gap-3">
                                         <span class="text-lg">🏃‍♂️</span>
                                         Divisi Aslap
@@ -59,9 +59,6 @@
                                     </a>
                                     <a href="{{ route('daily-targets.index') }}" class="block py-2 px-3 rounded-lg transition-colors {{ request()->routeIs('daily-targets.*') ? 'text-purple-700 font-bold bg-purple-100/70' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
                                         • Penyesuaian Porsi (Libur)
-                                    </a>
-                                    <a href="{{ route('transactions.out-create') }}" class="block py-2 px-3 rounded-lg transition-colors {{ request()->routeIs('transactions.out-create') ? 'text-red-700 font-bold bg-red-100/70' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
-                                        • Pemakaian Darurat
                                     </a>
                                 </div>
                             </div>
@@ -92,9 +89,9 @@
                                 </div>
                             </div>
 
-                            <div x-data="{ open: {{ request()->routeIs('items.*', 'transactions.check-order', 'transactions.in', 'transactions.in-create', 'transactions.recap', 'usage-recaps.*') ? 'true' : 'false' }} }" class="rounded-xl overflow-hidden bg-white border {{ request()->routeIs('items.*', 'transactions.check-order', 'transactions.in', 'transactions.in-create', 'transactions.recap', 'usage-recaps.*') ? 'border-emerald-200 shadow-sm' : 'border-transparent hover:border-gray-100' }}">
+                            <div x-data="{ open: {{ request()->routeIs('items.*', 'transactions.check-order', 'transactions.in', 'transactions.in-create', 'transactions.out-create', 'transactions.recap', 'usage-recaps.*') ? 'true' : 'false' }} }" class="rounded-xl overflow-hidden bg-white border {{ request()->routeIs('items.*', 'transactions.check-order', 'transactions.in', 'transactions.in-create', 'transactions.out-create', 'transactions.recap', 'usage-recaps.*') ? 'border-emerald-200 shadow-sm' : 'border-transparent hover:border-gray-100' }}">
                                 <button @click="open = !open" 
-                                        class="flex items-center justify-between w-full px-3 py-2.5 rounded-xl transition-all duration-200 focus:outline-none {{ request()->routeIs('items.*', 'transactions.check-order', 'transactions.in', 'transactions.in-create', 'transactions.recap', 'usage-recaps.*') ? 'bg-emerald-50 text-emerald-800 font-bold' : 'text-gray-600 hover:bg-gray-50 font-bold' }}">
+                                        class="flex items-center justify-between w-full px-3 py-2.5 rounded-xl transition-all duration-200 focus:outline-none {{ request()->routeIs('items.*', 'transactions.check-order', 'transactions.in', 'transactions.in-create', 'transactions.out-create', 'transactions.recap', 'usage-recaps.*') ? 'bg-emerald-50 text-emerald-800 font-bold' : 'text-gray-600 hover:bg-gray-50 font-bold' }}">
                                     <div class="flex items-center gap-3">
                                         <span class="text-lg">📦</span>
                                         Divisi Logistik Gudang
@@ -112,6 +109,11 @@
                                     <a href="{{ route('transactions.in') }}" class="block py-2 px-3 rounded-lg transition-colors {{ request()->routeIs('transactions.in', 'transactions.in-create') ? 'text-emerald-700 font-bold bg-emerald-100/70' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
                                         • Input Masuk (Manual)
                                     </a>
+                                    
+                                    <a href="{{ route('transactions.out-create') }}" class="block py-2 px-3 rounded-lg transition-colors {{ request()->routeIs('transactions.out-create') ? 'text-rose-700 font-bold bg-rose-100/70' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
+                                        • Input Keluar (Manual)
+                                    </a>
+
                                     <a href="{{ route('transactions.recap') }}" class="block py-2 px-3 rounded-lg transition-colors {{ request()->routeIs('transactions.recap') ? 'text-emerald-700 font-bold bg-emerald-100/70' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
                                         • Rekap Barang Masuk
                                     </a>
@@ -140,6 +142,13 @@
                                 <span class="text-lg mr-3 {{ request()->routeIs('menu-catalogs.*') ? '' : 'grayscale opacity-70' }}">📱</span>
                                 Request Menu Siswa
                             </a>
+
+                            <a href="{{ route('archives.index') }}" 
+                               class="flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 {{ request()->routeIs('archives.*') ? 'bg-blue-50 text-blue-800 font-bold border border-blue-200 shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium' }}">
+                                <span class="text-lg mr-3 {{ request()->routeIs('archives.*') ? '' : 'grayscale opacity-70' }}">📁</span>
+                                Gudang Arsip Excel
+                            </a>
+                            
                             
                         </nav>
                     </div>

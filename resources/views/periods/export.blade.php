@@ -1,120 +1,193 @@
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-
 @php
-    $groupedTargets = $dataTargetHarian->groupBy('date');
-    $colspanMax = 8; // Total Lebar Tabel adalah 8 Kolom
+    // 1. FORMAT TANGGAL AMAN
+    $startStr = isset($period->start_date) ? \Carbon\Carbon::parse($period->start_date)->format('Y-m-d') : null;
+    $endStr = isset($period->end_date) ? \Carbon\Carbon::parse($period->end_date)->format('Y-m-d') : null;
+
+    // 2. AMBIL DATA TARGET HARIAN (Gunakan blok try-catch agar jika tabel kosong tidak crash)
+    $beneficiaries = \App\Models\Beneficiary::all();
+    
+    try {
+        $dataTargetHarian = \App\Models\DailyTarget::where('period_id', $period->id)->get();
+        $groupedTargets = $dataTargetHarian->isNotEmpty() ? $dataTargetHarian->groupBy(function($item) {
+            return \Carbon\Carbon::parse($item->date)->format('Y-m-d');
+        }) : collect();
+    } catch (\Exception $e) {
+        $dataTargetHarian = collect();
+        $groupedTargets = collect();
+    }
+
+    // 3. GENERATE KALENDER 14 HARI OTOMATIS
+    $semuaTanggal = [];
+    if ($startStr && $endStr) {
+        $d = \Carbon\Carbon::parse($period->start_date);
+        $dEnd = \Carbon\Carbon::parse($period->end_date);
+        for($date = $d->copy(); $date->lte($dEnd); $date->addDay()) {
+            $semuaTanggal[] = $date->format('Y-m-d');
+        }
+    }
+
+    // 4. AMBIL BARANG MASUK & KELUAR (AMBIL DATA BERDASARKAN ID PERIODE DULU, JIKA KOSONG BARU PAKAI TANGGAL)
+    $gabunganKeluar = collect();
+    $barangMasuk = collect();
+
+    if (isset($period->id)) {
+        // Ambil Masuk & Keluar Manual Berdasarkan period_id
+        $manualOut = \App\Models\Transaction::with('item')->where('type', 'out')->where('period_id', $period->id)->get();
+        $barangMasuk = \App\Models\Transaction::with('item')->where('type', 'in')->where('period_id', $period->id)->orderBy('date')->get();
+        
+        // Ambil Keluar Dapur Berdasarkan Rentang Tanggal
+        $autoOut = \App\Models\UsageRecap::with(['item', 'menu'])->whereDate('date', '>=', $startStr)->whereDate('date', '<=', $endStr)->get();
+
+        // Jika DB ternyata sudah disapu bersih (0 hasil), coba fallback gunakan data historis rentang tanggal (jika ada backup)
+        if ($barangMasuk->isEmpty() && $manualOut->isEmpty()) {
+            $manualOut = \App\Models\Transaction::with('item')->where('type', 'out')->whereDate('date', '>=', $startStr)->whereDate('date', '<=', $endStr)->get();
+            $barangMasuk = \App\Models\Transaction::with('item')->where('type', 'in')->whereDate('date', '>=', $startStr)->whereDate('date', '<=', $endStr)->orderBy('date')->get();
+        }
+
+        // Mapping data Keluar Dapur
+        foreach($autoOut as $a) {
+            $gabunganKeluar->push((object)[
+                'date' => $a->date,
+                'item_name' => $a->item->name ?? 'Bahan Dihapus',
+                'keterangan' => 'Menu: ' . ($a->menu->name ?? '-'),
+                'qty' => $a->quantity_out,
+                'unit' => $a->unit,
+                'hpp' => $a->total_cost
+            ]);
+        }
+
+        // Mapping data Keluar Manual/Darurat
+        foreach($manualOut as $m) {
+            $gabunganKeluar->push((object)[
+                'date' => $m->date,
+                'item_name' => $m->item->name ?? 'Bahan Dihapus',
+                'keterangan' => 'Manual (Darurat): ' . $m->description,
+                'qty' => $m->quantity,
+                'unit' => $m->item->unit ?? '-',
+                'hpp' => $m->quantity * ($m->item->hpp ?? 0)
+            ]);
+        }
+        $gabunganKeluar = $gabunganKeluar->sortBy('date');
+    }
 @endphp
 
-<table style="border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px;">
-    
-    <tr>
-        <td colspan="{{ $colspanMax }}" style="text-align: center; font-size: 20px; font-weight: bold; color: #1e293b; border: none; padding-top: 15px;">
-            LAPORAN REKAPITULASI KOMPREHENSIF MBG
-        </td>
-    </tr>
-    <tr>
-        <td colspan="{{ $colspanMax }}" style="text-align: center; font-size: 16px; font-weight: bold; color: #4338ca; border: none;">
-            PERIODE: {{ strtoupper($period->name) }}
-        </td>
-    </tr>
-    <tr>
-        <td colspan="{{ $colspanMax }}" style="text-align: center; font-size: 12px; color: #64748b; border: none; border-bottom: 2px solid #000000; padding-bottom: 15px;">
-            Tanggal Pelaksanaan: {{ \Carbon\Carbon::parse($period->start_date)->translatedFormat('d F Y') }} s/d {{ \Carbon\Carbon::parse($period->end_date)->translatedFormat('d F Y') }}
-        </td>
-    </tr>
-    
-    <tr><td colspan="{{ $colspanMax }}" style="border: none;"></td></tr>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+</head>
+<body>
+    <table>
+        <tr>
+            <td colspan="8" style="text-align: center; font-weight: bold; font-size: 16px;">LAPORAN REKAPITULASI KOMPREHENSIF MBG</td>
+        </tr>
+        <tr>
+            <td colspan="8" style="text-align: center; font-weight: bold; color: blue; font-size: 14px;">
+                PERIODE: {{ strtoupper($period->name ?? 'ARSIP PERIODE SISTEM') }}
+            </td>
+        </tr>
+        <tr>
+            <td colspan="8" style="text-align: center;">
+                Tanggal Pelaksanaan: {{ $startStr ? \Carbon\Carbon::parse($startStr)->translatedFormat('d F Y') : '-' }} s/d {{ $endStr ? \Carbon\Carbon::parse($endStr)->translatedFormat('d F Y') : '-' }}
+            </td>
+        </tr>
+        <tr><td colspan="8"></td></tr>
 
-    <tr>
-        <td colspan="{{ $colspanMax }}" style="background-color: #4f46e5; color: #ffffff; font-size: 14px; font-weight: bold; text-align: left; padding: 10px; border: 1px solid #000000;">
-            1. REKAP TARGET PORSI HARIAN PENERIMA MANFAAT
-        </td>
-    </tr>
-    <tr style="background-color: #e0e7ff; font-weight: bold; text-align: center; vertical-align: middle;">
-        <td width="120" style="padding: 10px; border: 1px solid #000000;">Tanggal</td>
-        <td width="300" style="padding: 10px; border: 1px solid #000000;">Nama Sekolah/Posyandu</td>
-        <td width="100" style="padding: 10px; border: 1px solid #000000;">Tipe</td>
-        <td width="100" style="padding: 10px; border: 1px solid #000000;">Porsi Besar</td>
-        <td width="100" style="padding: 10px; border: 1px solid #000000;">Porsi Kecil</td>
-        <td width="100" style="padding: 10px; border: 1px solid #000000;">Total Balita</td>
-        <td width="120" style="padding: 10px; border: 1px solid #000000;">Total Bumil/Busui</td>
-        <td width="120" style="padding: 10px; border: 1px solid #000000;">Status Hari</td>
-    </tr>
-    @foreach($groupedTargets as $date => $rows)
-        @foreach($rows as $index => $row)
-            <tr>
-                @if($index === 0)
-                    <td rowspan="{{ count($rows) }}" style="padding: 5px; text-align: center; vertical-align: top; font-weight: bold; background-color: #f8fafc; border: 1px solid #000000;">
-                        {{ \Carbon\Carbon::parse($date)->format('d/m/Y') }}
-                    </td>
-                @endif
-                <td style="padding: 5px; border: 1px solid #000000;">{{ $row->beneficiary->school_name ?? '-' }}</td>
-                <td style="padding: 5px; text-align: center; border: 1px solid #000000;">{{ ucfirst($row->beneficiary->type ?? '-') }}</td>
-                <td style="padding: 5px; text-align: center; border: 1px solid #000000;">{{ $row->porsi_besar }}</td>
-                <td style="padding: 5px; text-align: center; border: 1px solid #000000;">{{ $row->porsi_kecil }}</td>
-                <td style="padding: 5px; text-align: center; font-weight: {{ $row->total_balita > 0 ? 'bold' : 'normal' }}; border: 1px solid #000000;">{{ $row->total_balita }}</td>
-                <td style="padding: 5px; text-align: center; font-weight: {{ $row->total_bumil_busui > 0 ? 'bold' : 'normal' }}; border: 1px solid #000000;">{{ $row->total_bumil_busui }}</td>
-                <td style="padding: 5px; font-weight: bold; text-align: center; border: 1px solid #000000; {{ $row->is_holiday ? 'color: #dc2626;' : 'color: #16a34a;' }}">
-                    {{ $row->is_holiday ? 'LIBUR' : 'AKTIF' }}
-                </td>
-            </tr>
+        <tr>
+            <td colspan="8" style="background-color: #4f46e5; color: white; font-weight: bold;">1. REKAP TARGET PORSI HARIAN PENERIMA MANFAAT</td>
+        </tr>
+        <tr>
+            <td style="font-weight: bold; border: 1px solid black; background-color:#e0e7ff;">Tanggal</td>
+            <td style="font-weight: bold; border: 1px solid black; background-color:#e0e7ff;">Nama Sekolah/Posyandu</td>
+            <td style="font-weight: bold; border: 1px solid black; background-color:#e0e7ff;">Tipe</td>
+            <td style="font-weight: bold; border: 1px solid black; background-color:#e0e7ff;">Porsi Besar</td>
+            <td style="font-weight: bold; border: 1px solid black; background-color:#e0e7ff;">Porsi Kecil</td>
+            <td style="font-weight: bold; border: 1px solid black; background-color:#e0e7ff;">Total Balita</td>
+            <td style="font-weight: bold; border: 1px solid black; background-color:#e0e7ff;">Total Bumil/Busui</td>
+            <td style="font-weight: bold; border: 1px solid black; background-color:#e0e7ff;">Status Hari</td>
+        </tr>
+        @foreach($semuaTanggal as $tgl)
+            @php
+                $isSunday = \Carbon\Carbon::parse($tgl)->isSunday();
+                $targetsForDate = $groupedTargets->has($tgl) ? $groupedTargets->get($tgl)->keyBy('beneficiary_id') : collect();
+            @endphp
+            @foreach($beneficiaries as $ben)
+                @php
+                    $target = $targetsForDate->get($ben->id);
+                    $isHoliday = $target ? $target->is_holiday : $isSunday; 
+                    
+                    $pBesar = $target ? $target->porsi_besar : $ben->porsi_besar;
+                    $pKecil = $target ? $target->porsi_kecil : $ben->porsi_kecil;
+                    $tBalita = $target ? $target->total_balita : $ben->total_balita;
+                    $tBumil = $target ? $target->total_bumil_busui : $ben->total_bumil_busui;
+
+                    if($isHoliday) {
+                        $pBesar = 0; $pKecil = 0; $tBalita = 0; $tBumil = 0;
+                    }
+                @endphp
+                <tr>
+                    <td style="border: 1px solid black;">{{ \Carbon\Carbon::parse($tgl)->translatedFormat('d M Y') }}</td>
+                    <td style="border: 1px solid black;">{{ $ben->school_name }}</td>
+                    <td style="border: 1px solid black; text-transform: capitalize;">{{ $ben->type }}</td>
+                    <td style="border: 1px solid black;">{{ $pBesar }}</td>
+                    <td style="border: 1px solid black;">{{ $pKecil }}</td>
+                    <td style="border: 1px solid black;">{{ $tBalita }}</td>
+                    <td style="border: 1px solid black;">{{ $tBumil }}</td>
+                    <td style="border: 1px solid black; font-weight:bold; color:{{ $isHoliday ? 'red' : 'green' }}">{{ $isHoliday ? 'LIBUR' : 'AKTIF' }}</td>
+                </tr>
+            @endforeach
         @endforeach
-    @endforeach
+        
+        <tr><td colspan="8"></td></tr>
 
-    <tr><td colspan="{{ $colspanMax }}" style="border: none;"></td></tr>
-    <tr><td colspan="{{ $colspanMax }}" style="border: none;"></td></tr>
-
-    <tr>
-        <td colspan="{{ $colspanMax }}" style="background-color: #059669; color: #ffffff; font-size: 14px; font-weight: bold; text-align: left; padding: 10px; border: 1px solid #000000;">
-            2. REKAP LOGISTIK: BARANG MASUK KE GUDANG
-        </td>
-    </tr>
-    <tr style="background-color: #d1fae5; font-weight: bold; text-align: center; vertical-align: middle;">
-        <td style="padding: 10px; border: 1px solid #000000;">Tanggal</td>
-        <td colspan="3" style="padding: 10px; border: 1px solid #000000;">Nama Bahan Baku</td>
-        <td style="padding: 10px; border: 1px solid #000000;">Masuk</td>
-        <td colspan="3" style="padding: 10px; border: 1px solid #000000;">Keterangan / Supplier</td>
-    </tr>
-    @forelse($dataBarangMasuk as $in)
         <tr>
-            <td style="padding: 5px; text-align: center; border: 1px solid #000000;">{{ \Carbon\Carbon::parse($in->date)->format('d/m/Y') }}</td>
-            <td colspan="3" style="padding: 5px; font-weight: bold; border: 1px solid #000000;">{{ $in->item->name ?? 'Bahan Dihapus' }}</td>
-            <td style="padding: 5px; text-align: center; color: #059669; font-weight: bold; border: 1px solid #000000;">+{{ $in->quantity }} {{ $in->item->unit ?? '' }}</td>
-            <td colspan="3" style="padding: 5px; border: 1px solid #000000;">{{ $in->description ?? '-' }}</td>
+            <td colspan="8" style="background-color: #10b981; color: white; font-weight: bold;">2. REKAP LOGISTIK: BARANG MASUK KE GUDANG</td>
         </tr>
-    @empty
         <tr>
-            <td colspan="{{ $colspanMax }}" style="text-align: center; padding: 10px; color: #94a3b8; font-style: italic; border: 1px solid #000000;">Tidak ada riwayat transaksi barang masuk pada periode ini.</td>
+            <td style="font-weight: bold; border: 1px solid black; background-color:#d1fae5;">Tanggal</td>
+            <td style="font-weight: bold; border: 1px solid black; background-color:#d1fae5;">Nama Bahan Baku</td>
+            <td style="font-weight: bold; border: 1px solid black; background-color:#d1fae5;">Masuk</td>
+            <td colspan="5" style="font-weight: bold; border: 1px solid black; background-color:#d1fae5;">Keterangan / Supplier</td>
         </tr>
-    @endforelse
+        @forelse($barangMasuk as $in)
+            <tr>
+                <td style="border: 1px solid black;">{{ \Carbon\Carbon::parse($in->date)->translatedFormat('d M Y') }}</td>
+                <td style="border: 1px solid black;">{{ $in->item->name ?? '-' }}</td>
+                <td style="border: 1px solid black;">{{ floatval($in->quantity) }} {{ $in->item->unit ?? '-' }}</td>
+                <td colspan="5" style="border: 1px solid black;">{{ $in->description }}</td>
+            </tr>
+        @empty
+            <tr>
+                <td colspan="8" style="text-align: center; border: 1px solid black; color: gray; font-style: italic;">Tidak ada riwayat transaksi barang masuk pada rentang tanggal periode ini.</td>
+            </tr>
+        @endforelse
 
-    <tr><td colspan="{{ $colspanMax }}" style="border: none;"></td></tr>
-    <tr><td colspan="{{ $colspanMax }}" style="border: none;"></td></tr>
+        <tr><td colspan="8"></td></tr>
 
-    <tr>
-        <td colspan="{{ $colspanMax }}" style="background-color: #ea580c; color: #ffffff; font-size: 14px; font-weight: bold; text-align: left; padding: 10px; border: 1px solid #000000;">
-            3. REKAP LOGISTIK: BAHAN KELUAR / PEMAKAIAN DAPUR
-        </td>
-    </tr>
-    <tr style="background-color: #ffedd5; font-weight: bold; text-align: center; vertical-align: middle;">
-        <td style="padding: 10px; border: 1px solid #000000;">Tanggal</td>
-        <td colspan="2" style="padding: 10px; border: 1px solid #000000;">Nama Bahan Baku</td>
-        <td colspan="2" style="padding: 10px; border: 1px solid #000000;">Menu Terkait</td>
-        <td style="padding: 10px; border: 1px solid #000000;">Keluar</td>
-        <td colspan="2" style="padding: 10px; border: 1px solid #000000;">Nilai HPP (Rp)</td>
-    </tr>
-    @forelse($dataBarangKeluar as $out)
         <tr>
-            <td style="padding: 5px; text-align: center; border: 1px solid #000000;">{{ \Carbon\Carbon::parse($out->date)->format('d/m/Y') }}</td>
-            <td colspan="2" style="padding: 5px; font-weight: bold; border: 1px solid #000000;">{{ $out->item->name ?? 'Bahan Dihapus' }}</td>
-            <td colspan="2" style="padding: 5px; border: 1px solid #000000;">{{ $out->menu->name ?? '-' }}</td>
-            <td style="padding: 5px; text-align: center; color: #ea580c; font-weight: bold; border: 1px solid #000000;">-{{ floatval($out->quantity_out) }} {{ $out->unit }}</td>
-            <td colspan="2" style="padding: 5px; text-align: right; font-weight: bold; border: 1px solid #000000;">Rp {{ number_format($out->total_cost, 0, ',', '.') }}</td>
+            <td colspan="8" style="background-color: #f97316; color: white; font-weight: bold;">3. REKAP LOGISTIK: BAHAN KELUAR / PEMAKAIAN DAPUR & MANUAL</td>
         </tr>
-    @empty
         <tr>
-            <td colspan="{{ $colspanMax }}" style="text-align: center; padding: 10px; color: #94a3b8; font-style: italic; border: 1px solid #000000;">Tidak ada riwayat rekap barang keluar pada periode ini.</td>
+            <td style="font-weight: bold; border: 1px solid black; background-color:#ffedd5;">Tanggal</td>
+            <td style="font-weight: bold; border: 1px solid black; background-color:#ffedd5;">Nama Bahan Baku</td>
+            <td style="font-weight: bold; border: 1px solid black; background-color:#ffedd5;">Menu / Tujuan</td>
+            <td style="font-weight: bold; border: 1px solid black; background-color:#ffedd5;">Keluar</td>
+            <td colspan="4" style="font-weight: bold; border: 1px solid black; background-color:#ffedd5;">Nilai HPP (Rp)</td>
         </tr>
-    @endforelse
+        @forelse($gabunganKeluar as $out)
+            <tr>
+                <td style="border: 1px solid black;">{{ \Carbon\Carbon::parse($out->date)->translatedFormat('d M Y') }}</td>
+                <td style="border: 1px solid black;">{{ $out->item_name }}</td>
+                <td style="border: 1px solid black;">{{ $out->keterangan }}</td>
+                <td style="border: 1px solid black;">{{ floatval($out->qty) }} {{ $out->unit }}</td>
+                <td colspan="4" style="border: 1px solid black;">Rp {{ number_format($out->hpp, 0, ',', '.') }}</td>
+            </tr>
+        @empty
+            <tr>
+                <td colspan="8" style="text-align: center; border: 1px solid black; color: gray; font-style: italic;">Tidak ada riwayat rekap barang keluar pada rentang tanggal periode ini.</td>
+            </tr>
+        @endforelse
 
-</table>
+    </table>
+</body>
+</html>
